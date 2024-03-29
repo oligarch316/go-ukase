@@ -26,7 +26,6 @@ func TestParamsInfo(t *testing.T) {
 		assert.Equal(t, "Params", info.TypeName, "check TypeName")
 	})
 
-	// Params must be of kind struct
 	t.Run("invalid kind", func(t *testing.T) {
 		type Params string
 
@@ -52,7 +51,6 @@ func TestParamsInfoArgs(t *testing.T) {
 		assert.Equal(t, "Args", info.Args.FieldName, "check Args.FieldName")
 	})
 
-	// At most one field may be tagged as args
 	t.Run("conflicting args", func(t *testing.T) {
 		type Params struct {
 			ParamOne []string `ukargs:"First occurence"`
@@ -68,7 +66,21 @@ func TestParamsInfoArgs(t *testing.T) {
 	})
 
 	t.Run("conflicting args embedded", func(t *testing.T) {
-		t.Skip("TODO")
+		type Embedded struct {
+			EmbedOne []string `ukargs:"First occurence"`
+		}
+
+		type Params struct {
+			Embedded
+			ParamOne []string `ukargs:"Second occurence"`
+		}
+
+		targetIs := ukcore.ErrParams
+		targetAs := new(ukcore.ErrorParamsArgsConflict)
+
+		_, err := ukcore.ParamsInfoOf(Params{})
+		require.ErrorIs(t, err, targetIs)
+		assert.ErrorAs(t, err, targetAs)
 	})
 
 	t.Run("conflicting args inlined", func(t *testing.T) {
@@ -142,7 +154,6 @@ func TestParamsInfoFlag(t *testing.T) {
 		}
 	})
 
-	// Flag names must be unique across fields
 	t.Run("conflicting flag explicit", func(t *testing.T) {
 		type Params struct {
 			ParamOne string `ukflag:"flagName - First occurence"`
@@ -157,7 +168,6 @@ func TestParamsInfoFlag(t *testing.T) {
 		assert.ErrorAs(t, err, targetAs)
 	})
 
-	// Flag names must be unique across fields
 	t.Run("conflicting flag implicit", func(t *testing.T) {
 		type Params struct {
 			ParamOne string `ukflag:"flagName"`
@@ -173,14 +183,27 @@ func TestParamsInfoFlag(t *testing.T) {
 	})
 
 	t.Run("conflicting flag embedded", func(t *testing.T) {
-		t.Skip("TODO")
+		type Embedded struct {
+			EmbedOne string `ukflag:"flagName - First occurence"`
+		}
+
+		type Params struct {
+			Embedded
+			ParamOne string `ukflag:"flagName - Second occurence"`
+		}
+
+		targetIs := ukcore.ErrParams
+		targetAs := new(ukcore.ErrorParamsFlagConflict)
+
+		_, err := ukcore.ParamsInfoOf(Params{})
+		require.ErrorIs(t, err, targetIs)
+		assert.ErrorAs(t, err, targetAs)
 	})
 
 	t.Run("conflicting flag inlined", func(t *testing.T) {
 		t.Skip("TODO")
 	})
 
-	// Flag names must be unique within a field
 	t.Run("conflicting flag internal", func(t *testing.T) {
 		type Params struct {
 			ParamOne string `ukflag:"flagName flagName - Double occurence"`
