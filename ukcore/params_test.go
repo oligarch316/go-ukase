@@ -96,18 +96,21 @@ func TestParamsInfoFlag(t *testing.T) {
 			return flagInfo, assert.Truef(t, ok, "check flag %s exists", flagName)
 		}
 
+		// Implicitly named
 		if flagOne, ok := lookupFlag("paramOne"); ok {
 			assert.Empty(t, flagOne.Doc, "check paramOne Doc")
 			assert.Equal(t, "ParamOne", flagOne.FieldName, "check paramOne FieldName")
 			assert.False(t, flagOne.IsBoolFlag(), "check paramOne IsBoolFlag()")
 		}
 
+		// Explictly named
 		if flagTwo, ok := lookupFlag("flagTwo"); ok {
 			assert.Equal(t, "flagTwo doc", flagTwo.Doc, "check flagTwo Doc")
 			assert.Equal(t, "ParamTwo", flagTwo.FieldName, "check flagTwo FieldName")
 			assert.False(t, flagTwo.IsBoolFlag(), "check flagTwo IsBoolFlag()")
 		}
 
+		// Implicitly `IsBoolFlag() == true`
 		if flagThree, ok := lookupFlag("flagThree"); ok {
 			assert.Equal(t, "flagThree doc", flagThree.Doc, "check flagThree Doc")
 			assert.Equal(t, "ParamThree", flagThree.FieldName, "check flagThree FieldName")
@@ -119,12 +122,14 @@ func TestParamsInfoFlag(t *testing.T) {
 			assert.False(t, checkUnknown, `check flagThree CheckBoolFlag("unknown")`)
 		}
 
+		// Custom `IsBoolFlag() == false`
 		if flagFour, ok := lookupFlag("flagFour"); ok {
 			assert.Equal(t, "flagFour doc", flagFour.Doc, "check flagFour Doc")
 			assert.Equal(t, "ParamFour", flagFour.FieldName, "check flagFour FieldName")
 			assert.False(t, flagFour.IsBoolFlag(), "check flagFour IsBoolFlag()")
 		}
 
+		// Custom `IsBoolFlag() == true` + `CheckBoolFlag(...) bool { ... }`
 		if flagFive, ok := lookupFlag("flagFive"); ok {
 			assert.Equal(t, "flagFive doc", flagFive.Doc, "check flagFiv Doc")
 			assert.Equal(t, "ParamFive", flagFive.FieldName, "check flagFive FieldName")
