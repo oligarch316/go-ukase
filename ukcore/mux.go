@@ -105,7 +105,7 @@ func (m Mux) info() ParamsInfo {
 		return m.node.info
 	}
 
-	return EmptyParamsInfo
+	return paramsInfoEmpty
 }
 
 func (m Mux) handler() Handler {

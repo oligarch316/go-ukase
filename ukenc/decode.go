@@ -74,7 +74,7 @@ func (d *Decoder) decodeFlags(val reflect.Value, info ukcore.ParamsInfo) error {
 		}
 
 		// TODO: Do I need to handle possibly "stepping through a nil pointer"? (ugh)
-		fieldVal := val.FieldByIndex(flagInfo.Index)
+		fieldVal := val.FieldByIndex(flagInfo.FieldIndex)
 		if err := decodeFlag(fieldVal, flag); err != nil {
 			return err
 		}

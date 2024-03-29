@@ -1,51 +1,64 @@
 package ukcore
 
 import (
-	"errors"
 	"reflect"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
 
 const (
-	tagKeyArgs = "ukargs"
-	tagKeyFlag = "ukflag"
-	tagKeyDoc  = "ukdoc"
+	paramsTagArgs = "ukargs"
+	paramsTagFlag = "ukflag"
+	paramsTagDoc  = "ukdoc"
+
+	// TODO
+	// paramsTagInline = "ukinline"
+	// paramsTagValueSkip = "-"
 )
 
-var EmptyParamsInfo = ParamsInfo{Flags: make(map[string]FlagInfo)}
-
-func defaultIsBool() bool { return false }
-
-func defaultCheckBool(str string) bool {
-	_, err := strconv.ParseBool(str)
-	return err == nil
+var paramsInfoEmpty = ParamsInfo{
+	TypeName: "EMPTY",
+	Flags:    make(map[string]ParamsInfoFlag),
 }
 
-type ArgsInfo struct{ Index []int }
+type ParamsInfo struct {
+	TypeName string
+	Args     *ParamsInfoArgs
+	Flags    map[string]ParamsInfoFlag
+}
 
-type FlagInfo struct {
-	Index []int
+type ParamsInfoArgs struct {
+	FieldName  string
+	FieldIndex []int
+}
 
+type ParamsInfoFlag struct {
+	FieldName  string
+	FieldIndex []int
+	ParamsInfoFlagBool
+}
+
+type ParamsInfoFlagBool struct {
 	IsBoolFlag    func() bool
 	CheckBoolFlag func(string) bool
 }
 
-type ParamsInfo struct {
-	Args  *ArgsInfo
-	Flags map[string]FlagInfo
-}
-
 func ParamsInfoOf(v any) (ParamsInfo, error) {
+	// TODO: Any need to descend indirects (pointer/interface) here?
 	return NewParamsInfo(reflect.TypeOf(v))
 }
 
 func NewParamsInfo(typ reflect.Type) (ParamsInfo, error) {
-	info := ParamsInfo{Flags: make(map[string]FlagInfo)}
+	info := ParamsInfo{
+		TypeName: typ.Name(),
+		Flags:    make(map[string]ParamsInfoFlag),
+	}
 
 	if typ.Kind() != reflect.Struct {
-		return info, errors.New("[TODO NewParamsInfo] typ was not of kind struct")
+		err := errorParams{TypeName: info.TypeName}
+		return info, err.kind(typ.Kind())
 	}
 
 	for _, field := range reflect.VisibleFields(typ) {
@@ -58,7 +71,7 @@ func NewParamsInfo(typ reflect.Type) (ParamsInfo, error) {
 }
 
 func (pi *ParamsInfo) loadField(field reflect.StructField) error {
-	if _, ok := field.Tag.Lookup(tagKeyArgs); ok {
+	if _, ok := field.Tag.Lookup(paramsTagArgs); ok {
 		return pi.loadArgsField(field)
 	}
 
@@ -67,54 +80,83 @@ func (pi *ParamsInfo) loadField(field reflect.StructField) error {
 
 func (pi *ParamsInfo) loadArgsField(field reflect.StructField) error {
 	if pi.Args != nil {
-		return errors.New("[TODO loadFieldArgs] detected multiple args fields")
+		err := errorParams{TypeName: pi.TypeName}
+		return err.argsConflict(pi.Args.FieldName, field.Name)
 	}
 
-	pi.Args = &ArgsInfo{Index: field.Index}
+	pi.Args = &ParamsInfoArgs{FieldName: field.Name, FieldIndex: field.Index}
 	return nil
 }
 
 func (pi *ParamsInfo) loadFlagField(field reflect.StructField) error {
-	type IsBool interface{ IsBoolFlag() bool }
-	type CheckBool interface{ CheckBoolFlag(string) bool }
-
-	flagName := pi.parseFlagName(field)
-	if _, exists := pi.Flags[flagName]; exists {
-		return errors.New("[TODO loadFlagField] detected conflicting flag fields")
+	flagInfo := ParamsInfoFlag{
+		FieldName:          field.Name,
+		FieldIndex:         field.Index,
+		ParamsInfoFlagBool: pi.parseFlagBool(field),
 	}
 
-	flagInfo := FlagInfo{
-		Index:         field.Index,
-		IsBoolFlag:    defaultIsBool,
-		CheckBoolFlag: defaultCheckBool,
+	// TODO:
+	// "Denormalizing" multiple flag names here is convenient for decode
+	// Probably pretty inconvenient when it comes to displaying help text
+	// Cross that bridge...
+	for _, flagName := range pi.parseFlagNames(field) {
+		if extant, exists := pi.Flags[flagName]; exists {
+			err := errorParams{TypeName: pi.TypeName}
+			return err.flagConflict(extant.FieldName, field.Name)
+		}
+
+		pi.Flags[flagName] = flagInfo
 	}
 
-	// TODO: Do I need to worry about `field.Type` being an indirect type (Pointer/Interface)?
-	tempVal := reflect.New(field.Type).Interface()
-
-	switch tempT := tempVal.(type) {
-	case IsBool:
-		flagInfo.IsBoolFlag = tempT.IsBoolFlag
-	case *bool:
-		flagInfo.IsBoolFlag = func() bool { return true }
-	}
-
-	if checkBool, ok := tempVal.(CheckBool); ok {
-		flagInfo.CheckBoolFlag = checkBool.CheckBoolFlag
-	}
-
-	pi.Flags[flagName] = flagInfo
 	return nil
 }
 
-func (ParamsInfo) parseFlagName(field reflect.StructField) string {
-	// Prefer tag value if available
-	if tag, ok := field.Tag.Lookup(tagKeyFlag); ok {
-		return tag
+func (ParamsInfo) parseFlagNames(field reflect.StructField) []string {
+	// Prefer tag value(s) if available
+	if tag, ok := field.Tag.Lookup(paramsTagFlag); ok {
+		return strings.Fields(tag)
 	}
 
 	// Use field name with 1st rune lowercased otherwise
 	r, size := utf8.DecodeRuneInString(field.Name)
-	head, tail := string(unicode.ToLower(r)), field.Name[size:]
-	return head + tail
+	head := unicode.ToLower(r)
+	tail := field.Name[size:]
+	name := string(head) + tail
+	return []string{name}
+}
+
+func (pi ParamsInfo) parseFlagBool(field reflect.StructField) ParamsInfoFlagBool {
+	var boolInfo ParamsInfoFlagBool
+
+	val := reflect.New(field.Type).Interface()
+
+	type IsBool interface{ IsBoolFlag() bool }
+
+	switch val := val.(type) {
+	case IsBool:
+		boolInfo.IsBoolFlag = val.IsBoolFlag
+	case *bool:
+		boolInfo.IsBoolFlag = pi.isBoolTrue
+	default:
+		boolInfo.IsBoolFlag = pi.isBoolFalse
+	}
+
+	type CheckBool interface{ CheckBoolFlag(string) bool }
+
+	switch val := val.(type) {
+	case CheckBool:
+		boolInfo.CheckBoolFlag = val.CheckBoolFlag
+	default:
+		boolInfo.CheckBoolFlag = pi.checkBoolParse
+	}
+
+	return boolInfo
+}
+
+func (ParamsInfo) isBoolTrue() bool  { return true }
+func (ParamsInfo) isBoolFalse() bool { return false }
+
+func (ParamsInfo) checkBoolParse(str string) bool {
+	_, err := strconv.ParseBool(str)
+	return err == nil
 }
