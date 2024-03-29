@@ -151,7 +151,7 @@ func decodeFlagPointer(val reflect.Value, flag ukcore.Flag) error {
 
 // TODO:
 // Reminder, in builtin there's `type byte = uint8`
-// Possibly wan't special case behavior for Slice<uint8>
+// Possibly want special case behavior for Slice<uint8>
 
 func decodeFlagSlice(val reflect.Value, flag ukcore.Flag) error {
 	return errors.New("[TODO decodeFlagSlice] not yet implemented")
