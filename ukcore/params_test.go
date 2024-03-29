@@ -84,7 +84,7 @@ func TestParamsInfoFlag(t *testing.T) {
 			ParamThree bool            `ukflag:"flagThree - flagThree doc"`
 			ParamFour  customBoolFalse `ukflag:"flagFour  - flagFour doc"`
 			ParamFive  customBoolTrue  `ukflag:"flagFive  - flagFive doc"`
-			// TODO: ParamSix   string          `ukflag:"-"`
+			Skipped    string          `ukflag:"-"`
 		}
 
 		info, err := ukcore.ParamsInfoOf(Params{})

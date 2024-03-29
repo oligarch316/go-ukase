@@ -107,6 +107,10 @@ func (pi *ParamsInfo) loadTagFlag(tag string, field reflect.StructField) error {
 	// Probably pretty inconvenient when it comes to displaying help text
 	// Cross that bridge...
 	for _, flagName := range flagNames {
+		if flagName == "" || flagName == paramsTagValueSkip {
+			continue
+		}
+
 		if err := pi.addFlag(flagName, flagInfo); err != nil {
 			return err
 		}
