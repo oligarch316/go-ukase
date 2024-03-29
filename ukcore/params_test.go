@@ -8,6 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO:
+// - Success cases for embedded `ukargs`
+// - Success cases for inlined `ukargs`
+// - Success cases for embedded `ukflag`
+// - success cases for inline `ukflag`
+
 type customBoolFalse struct{}
 
 func (customBoolFalse) IsBoolFlag() bool { return false }
