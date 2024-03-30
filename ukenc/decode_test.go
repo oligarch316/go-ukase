@@ -2,6 +2,7 @@ package ukenc_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/oligarch316/go-ukase/ukcore"
 	"github.com/oligarch316/go-ukase/ukenc"
@@ -144,6 +145,14 @@ func TestDecodeError(t *testing.T) {
 				A complex64 `ukflag:"flagA"`
 			}),
 		},
+		{
+			name:     "flag value invalid TextUnmarshaler",
+			expected: new(ukenc.ErrorDecodeFlagValue),
+			input:    genInput(t, "flagA", "invalid"),
+			params: new(struct {
+				A time.Time `ukflag:"flagA"`
+			}),
+		},
 	}
 
 	for _, subtest := range subtests {
@@ -179,11 +188,30 @@ func TestDecodeBasic(t *testing.T) {
 	params := new(Params)
 
 	err := ukenc.NewDecoder(input).Decode(params)
-	require.NoError(t, err, "check Decoder error")
+	require.NoError(t, err, "check Decode error")
 	assert.Equal(t, bool(true), params.ParamBool, "check ParamBool")
 	assert.Equal(t, int(-42), params.ParamInt, "check ParamInt")
 	assert.Equal(t, uint(42), params.ParamUint, "check ParamUint")
 	assert.Equal(t, float64(42.42), params.ParamFloat, "check ParamFloat")
 	assert.Equal(t, complex(42, 42), params.ParamComplex, "check ParamComplex")
 	assert.Equal(t, string("forty-two"), params.ParamString, "check ParamString")
+}
+
+func TestDecodeTextUnmarshaler(t *testing.T) {
+	type Params struct {
+		ParamTime time.Time `ukflag:"flagTime"`
+
+		// TODO: Requires indirect (pointer) implementation
+		// ParamTimePointer time.Time `ukflag:"flagTimePointer"`
+	}
+
+	input := genInput(t, "flagTime", "1985-04-12T23:20:50Z")
+	params := new(Params)
+
+	err := ukenc.NewDecoder(input).Decode(params)
+	require.NoError(t, err, "check Decode error")
+
+	actual := params.ParamTime
+	expected := time.Date(1985, 4, 12, 23, 20, 50, 0, time.UTC)
+	assert.Truef(t, actual.Equal(expected), "actual: %s\nexpected: %s", actual, expected)
 }

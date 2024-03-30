@@ -1,6 +1,7 @@
 package ukenc
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"reflect"
@@ -45,46 +46,79 @@ func (d *Decoder) Decode(params any) error {
 	return d.decodeArgs(elem, info)
 }
 
-func (d *Decoder) decodeFlag(val reflect.Value, info ukcore.ParamsInfo, flag ukcore.Flag) error {
+func (d *Decoder) decodeFlag(structVal reflect.Value, info ukcore.ParamsInfo, flag ukcore.Flag) error {
 	flagInfo, ok := info.Flags[flag.Name]
 	if !ok {
-		return decodeErr(val).flagName(flag)
+		return decodeErr(structVal).flagName(flag)
 	}
 
 	// TODO: Do I need to handle possibly "stepping through a nil pointer"? (ugh)
-	fieldVal := val.FieldByIndex(flagInfo.FieldIndex)
+	fieldVal := structVal.FieldByIndex(flagInfo.FieldIndex)
 
-	// TODO: Handle "custom" fields
+	if unmarshaler, ok := loadTextUnmarshaler(fieldVal); ok {
+		text := []byte(flag.Value)
 
-	flagDecoder, ok := flagDecoders[fieldVal.Kind()]
-	if !ok {
-		message := fmt.Sprintf("unsupported kind '%s'", fieldVal.Kind())
-		return decodeErr(val).field(fieldVal, flagInfo.FieldName, message)
+		if err := unmarshaler.UnmarshalText(text); err != nil {
+			return decodeErr(structVal).flagValue(flag, err)
+		}
+
+		return nil
 	}
 
-	if err := flagDecoder(fieldVal, flag); err != nil {
-		return decodeErr(val).flagValue(flag, err)
+	kindDecoder, ok := kindDecoders[fieldVal.Kind()]
+	if !ok {
+		message := fmt.Sprintf("unsupported kind '%s'", fieldVal.Kind())
+		return decodeErr(structVal).field(fieldVal, flagInfo.FieldName, message)
+	}
+
+	if err := kindDecoder(fieldVal, flag); err != nil {
+		return decodeErr(structVal).flagValue(flag, err)
 	}
 
 	return nil
 }
 
-func (d *Decoder) decodeArgs(val reflect.Value, info ukcore.ParamsInfo) error {
+func (d *Decoder) decodeArgs(structVal reflect.Value, info ukcore.ParamsInfo) error {
+	// NOTE: Don't forget that (as it stands) input.Args may be nil!
+
 	// TODO
 	return nil
 }
 
 // =============================================================================
-// Args
+// Interface
 // =============================================================================
 
-// TODO
+var typeTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+
+func loadTextUnmarshaler(fieldVal reflect.Value) (encoding.TextUnmarshaler, bool) {
+	fieldType := fieldVal.Type()
+
+	if fieldType.Implements(typeTextUnmarshaler) {
+		unmarshaler, ok := fieldVal.Interface().(encoding.TextUnmarshaler)
+		return unmarshaler, ok
+	}
+
+	if reflect.PointerTo(fieldType).Implements(typeTextUnmarshaler) {
+		if !fieldVal.CanAddr() {
+			// This should never be the case as `fieldVal` is expected to be a
+			// field of an addressable (provided via pointer) struct.
+			// Still, safety first
+			return nil, false
+		}
+
+		unmarshaler, ok := fieldVal.Addr().Interface().(encoding.TextUnmarshaler)
+		return unmarshaler, ok
+	}
+
+	return nil, false
+}
 
 // =============================================================================
-// Flag
+// Kind
 // =============================================================================
 
-var flagDecoders = map[reflect.Kind]func(reflect.Value, ukcore.Flag) error{
+var kindDecoders = map[reflect.Kind]func(reflect.Value, ukcore.Flag) error{
 	// Indirect
 	reflect.Interface: decodeFlagInterface,
 	reflect.Pointer:   decodeFlagPointer,
@@ -112,13 +146,7 @@ var flagDecoders = map[reflect.Kind]func(reflect.Value, ukcore.Flag) error{
 }
 
 // =============================================================================
-// Flag› Custom
-// =============================================================================
-
-// TODO: Handle encoding.TextUnmarshaler
-
-// =============================================================================
-// Flag› Indirect
+// Kind› Indirect
 // =============================================================================
 
 func decodeFlagInterface(val reflect.Value, flag ukcore.Flag) error {
@@ -130,7 +158,7 @@ func decodeFlagPointer(val reflect.Value, flag ukcore.Flag) error {
 }
 
 // =============================================================================
-// Flag› Collection
+// Kind› Collection
 // =============================================================================
 
 // TODO:
@@ -142,7 +170,7 @@ func decodeFlagSlice(val reflect.Value, flag ukcore.Flag) error {
 }
 
 // =============================================================================
-// Flag› Basic
+// Kind› Basic
 // =============================================================================
 
 func decodeFlagBool(val reflect.Value, flag ukcore.Flag) error {
