@@ -71,7 +71,7 @@ func (d *Decoder) decodeFlag(structVal reflect.Value, info ukcore.ParamsInfo, fl
 		return decodeErr(structVal).field(fieldVal, flagInfo.FieldName, message)
 	}
 
-	if err := kindDecoder(fieldVal, flag); err != nil {
+	if err := kindDecoder(fieldVal, flag.Value); err != nil {
 		return decodeErr(structVal).flagValue(flag, err)
 	}
 
@@ -118,7 +118,7 @@ func loadTextUnmarshaler(fieldVal reflect.Value) (encoding.TextUnmarshaler, bool
 // Kind
 // =============================================================================
 
-var kindDecoders = map[reflect.Kind]func(reflect.Value, ukcore.Flag) error{
+var kindDecoders = map[reflect.Kind]func(reflect.Value, string) error{
 	// Indirect
 	reflect.Interface: decodeFlagInterface,
 	reflect.Pointer:   decodeFlagPointer,
@@ -149,11 +149,11 @@ var kindDecoders = map[reflect.Kind]func(reflect.Value, ukcore.Flag) error{
 // Kind› Indirect
 // =============================================================================
 
-func decodeFlagInterface(val reflect.Value, flag ukcore.Flag) error {
+func decodeFlagInterface(dst reflect.Value, src string) error {
 	return errors.New("[TODO decodeFlagInterface] not yet implemented")
 }
 
-func decodeFlagPointer(val reflect.Value, flag ukcore.Flag) error {
+func decodeFlagPointer(dst reflect.Value, src string) error {
 	return errors.New("[TODO decodeFlagPointer] not yet implemented")
 }
 
@@ -165,7 +165,7 @@ func decodeFlagPointer(val reflect.Value, flag ukcore.Flag) error {
 // Reminder, in builtin there's `type byte = uint8`
 // Possibly want special case behavior for Slice<uint8>
 
-func decodeFlagSlice(val reflect.Value, flag ukcore.Flag) error {
+func decodeFlagSlice(dstl reflect.Value, src string) error {
 	return errors.New("[TODO decodeFlagSlice] not yet implemented")
 }
 
@@ -173,57 +173,57 @@ func decodeFlagSlice(val reflect.Value, flag ukcore.Flag) error {
 // Kind› Basic
 // =============================================================================
 
-func decodeFlagBool(val reflect.Value, flag ukcore.Flag) error {
-	boolVal, err := strconv.ParseBool(flag.Value)
+func decodeFlagBool(dst reflect.Value, src string) error {
+	boolVal, err := strconv.ParseBool(src)
 	if err != nil {
 		return err
 	}
 
-	val.SetBool(boolVal)
+	dst.SetBool(boolVal)
 	return nil
 }
 
-func decodeFlagInt(val reflect.Value, flag ukcore.Flag) error {
-	intVal, err := strconv.ParseInt(flag.Value, 10, val.Type().Bits())
+func decodeFlagInt(dst reflect.Value, src string) error {
+	intVal, err := strconv.ParseInt(src, 10, dst.Type().Bits())
 	if err != nil {
 		return err
 	}
 
-	val.SetInt(intVal)
+	dst.SetInt(intVal)
 	return nil
 }
 
-func decodeFlagUint(val reflect.Value, flag ukcore.Flag) error {
-	uintVal, err := strconv.ParseUint(flag.Value, 10, val.Type().Bits())
+func decodeFlagUint(dst reflect.Value, src string) error {
+	uintVal, err := strconv.ParseUint(src, 10, dst.Type().Bits())
 	if err != nil {
 		return err
 	}
 
-	val.SetUint(uintVal)
+	dst.SetUint(uintVal)
 	return nil
 }
 
-func decodeFlagFloat(val reflect.Value, flag ukcore.Flag) error {
-	floatVal, err := strconv.ParseFloat(flag.Value, val.Type().Bits())
+func decodeFlagFloat(dst reflect.Value, src string) error {
+	floatVal, err := strconv.ParseFloat(src, dst.Type().Bits())
 	if err != nil {
 		return err
 	}
 
-	val.SetFloat(floatVal)
+	dst.SetFloat(floatVal)
 	return nil
 }
 
-func decodeFlagComplex(val reflect.Value, flag ukcore.Flag) error {
-	complexVal, err := strconv.ParseComplex(flag.Value, val.Type().Bits())
+func decodeFlagComplex(dst reflect.Value, src string) error {
+	complexVal, err := strconv.ParseComplex(src, dst.Type().Bits())
 	if err != nil {
 		return err
 	}
 
-	val.SetComplex(complexVal)
+	dst.SetComplex(complexVal)
 	return nil
 }
 
-func decodeFlagString(val reflect.Value, flag ukcore.Flag) error {
-	val.SetString(flag.Value)
+func decodeFlagString(dst reflect.Value, src string) error {
+	dst.SetString(src)
 	return nil
 }
