@@ -65,13 +65,11 @@ func (d *Decoder) decodeFlag(structVal reflect.Value, info ukcore.ParamsInfo, fl
 		return nil
 	}
 
-	kindDecoder, ok := kindDecoders[fieldVal.Kind()]
-	if !ok {
-		message := fmt.Sprintf("unsupported kind '%s'", fieldVal.Kind())
-		return decodeErr(structVal).field(fieldVal, flagInfo.FieldName, message)
-	}
+	if err := decode(fieldVal, flag.Value); err != nil {
+		if errors.Is(err, errUnsupportedKind) {
+			return decodeErr(structVal).field(fieldVal, flagInfo.FieldName, err)
+		}
 
-	if err := kindDecoder(fieldVal, flag.Value); err != nil {
 		return decodeErr(structVal).flagValue(flag, err)
 	}
 
@@ -118,43 +116,77 @@ func loadTextUnmarshaler(fieldVal reflect.Value) (encoding.TextUnmarshaler, bool
 // Kind
 // =============================================================================
 
-var kindDecoders = map[reflect.Kind]func(reflect.Value, string) error{
-	// Indirect
-	reflect.Interface: decodeFlagInterface,
-	reflect.Pointer:   decodeFlagPointer,
+var errUnsupportedKind = errors.New("unsupported kind")
 
-	// Collection
-	reflect.Slice: decodeFlagSlice,
+var kindDecoders map[reflect.Kind]func(reflect.Value, string) error
 
-	// Basic
-	reflect.Bool:       decodeFlagBool,
-	reflect.Int:        decodeFlagInt,
-	reflect.Int8:       decodeFlagInt,
-	reflect.Int16:      decodeFlagInt,
-	reflect.Int32:      decodeFlagInt,
-	reflect.Int64:      decodeFlagInt,
-	reflect.Uint:       decodeFlagUint,
-	reflect.Uint8:      decodeFlagUint,
-	reflect.Uint16:     decodeFlagUint,
-	reflect.Uint32:     decodeFlagUint,
-	reflect.Uint64:     decodeFlagUint,
-	reflect.Float32:    decodeFlagFloat,
-	reflect.Float64:    decodeFlagFloat,
-	reflect.Complex64:  decodeFlagComplex,
-	reflect.Complex128: decodeFlagComplex,
-	reflect.String:     decodeFlagString,
+func init() {
+	kindDecoders = map[reflect.Kind]func(reflect.Value, string) error{
+		// Indirect
+		reflect.Interface: decodeInterface,
+		reflect.Pointer:   decodePointer,
+
+		// Collection
+		reflect.Slice: decodeSlice,
+
+		// Basic
+		reflect.Bool:       decodeBool,
+		reflect.Int:        decodeInt,
+		reflect.Int8:       decodeInt,
+		reflect.Int16:      decodeInt,
+		reflect.Int32:      decodeInt,
+		reflect.Int64:      decodeInt,
+		reflect.Uint:       decodeUint,
+		reflect.Uint8:      decodeUint,
+		reflect.Uint16:     decodeUint,
+		reflect.Uint32:     decodeUint,
+		reflect.Uint64:     decodeUint,
+		reflect.Float32:    decodeFloat,
+		reflect.Float64:    decodeFloat,
+		reflect.Complex64:  decodeComplex,
+		reflect.Complex128: decodeComplex,
+		reflect.String:     decodeString,
+	}
+}
+
+// TODO:
+// End users should not need to actually decode a value into a field to discover
+// that field's kind isn't supported. Exposing the kind map or a Validate()
+// check against it seems sane. However, we don't want to import it into
+// ukcore during ParamInfo construction because "sanctity of the dependency graph".
+
+func decode(dst reflect.Value, src string) error {
+	kindDecoder, ok := kindDecoders[dst.Kind()]
+	if !ok {
+		return fmt.Errorf("%w '%s'", errUnsupportedKind, dst.Kind())
+	}
+
+	return kindDecoder(dst, src)
 }
 
 // =============================================================================
 // Kind› Indirect
 // =============================================================================
 
-func decodeFlagInterface(dst reflect.Value, src string) error {
-	return errors.New("[TODO decodeFlagInterface] not yet implemented")
+func decodeInterface(dst reflect.Value, src string) error {
+	// NOTE:
+	// We could inspect any existing value present in `dst` and match it's kind
+	// This seems footgun/surprise inducing and so we'll eschew that for now
+
+	dst.Set(reflect.ValueOf(src))
+	return nil
 }
 
-func decodeFlagPointer(dst reflect.Value, src string) error {
-	return errors.New("[TODO decodeFlagPointer] not yet implemented")
+func decodePointer(dst reflect.Value, src string) error {
+	elemType := dst.Type().Elem()
+
+	val := reflect.New(elemType)
+	if err := decode(val.Elem(), src); err != nil {
+		return err
+	}
+
+	dst.Set(val)
+	return nil
 }
 
 // =============================================================================
@@ -165,7 +197,7 @@ func decodeFlagPointer(dst reflect.Value, src string) error {
 // Reminder, in builtin there's `type byte = uint8`
 // Possibly want special case behavior for Slice<uint8>
 
-func decodeFlagSlice(dstl reflect.Value, src string) error {
+func decodeSlice(dstl reflect.Value, src string) error {
 	return errors.New("[TODO decodeFlagSlice] not yet implemented")
 }
 
@@ -173,7 +205,7 @@ func decodeFlagSlice(dstl reflect.Value, src string) error {
 // Kind› Basic
 // =============================================================================
 
-func decodeFlagBool(dst reflect.Value, src string) error {
+func decodeBool(dst reflect.Value, src string) error {
 	boolVal, err := strconv.ParseBool(src)
 	if err != nil {
 		return err
@@ -183,7 +215,7 @@ func decodeFlagBool(dst reflect.Value, src string) error {
 	return nil
 }
 
-func decodeFlagInt(dst reflect.Value, src string) error {
+func decodeInt(dst reflect.Value, src string) error {
 	intVal, err := strconv.ParseInt(src, 10, dst.Type().Bits())
 	if err != nil {
 		return err
@@ -193,7 +225,7 @@ func decodeFlagInt(dst reflect.Value, src string) error {
 	return nil
 }
 
-func decodeFlagUint(dst reflect.Value, src string) error {
+func decodeUint(dst reflect.Value, src string) error {
 	uintVal, err := strconv.ParseUint(src, 10, dst.Type().Bits())
 	if err != nil {
 		return err
@@ -203,7 +235,7 @@ func decodeFlagUint(dst reflect.Value, src string) error {
 	return nil
 }
 
-func decodeFlagFloat(dst reflect.Value, src string) error {
+func decodeFloat(dst reflect.Value, src string) error {
 	floatVal, err := strconv.ParseFloat(src, dst.Type().Bits())
 	if err != nil {
 		return err
@@ -213,7 +245,7 @@ func decodeFlagFloat(dst reflect.Value, src string) error {
 	return nil
 }
 
-func decodeFlagComplex(dst reflect.Value, src string) error {
+func decodeComplex(dst reflect.Value, src string) error {
 	complexVal, err := strconv.ParseComplex(src, dst.Type().Bits())
 	if err != nil {
 		return err
@@ -223,7 +255,7 @@ func decodeFlagComplex(dst reflect.Value, src string) error {
 	return nil
 }
 
-func decodeFlagString(dst reflect.Value, src string) error {
+func decodeString(dst reflect.Value, src string) error {
 	dst.SetString(src)
 	return nil
 }

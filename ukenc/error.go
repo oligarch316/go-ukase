@@ -33,22 +33,24 @@ func (edtt ErrorDecodeParams) Error() string {
 
 type ErrorDecodeField struct {
 	errorDecode
+	error
 	FieldType reflect.Type
 	FieldName string
-	message   string
 }
 
-func (ed errorDecode) field(field reflect.Value, fieldName, message string) ErrorDecodeField {
+func (ed errorDecode) field(field reflect.Value, fieldName string, err error) ErrorDecodeField {
 	return ErrorDecodeField{
 		errorDecode: ed,
+		error:       err,
 		FieldType:   field.Type(),
 		FieldName:   fieldName,
-		message:     message,
 	}
 }
 
+func (edft ErrorDecodeField) Unwrap() error { return edft.error }
+
 func (edft ErrorDecodeField) Error() string {
-	return fmt.Sprintf("invalid field '%s' (%s): %s", edft.FieldName, edft.FieldType, edft.message)
+	return fmt.Sprintf("invalid parameters field '%s' (%s): %s", edft.FieldName, edft.FieldType, edft.error)
 }
 
 type ErrorDecodeFlagName struct {

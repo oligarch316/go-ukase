@@ -189,12 +189,47 @@ func TestDecodeBasic(t *testing.T) {
 
 	err := ukenc.NewDecoder(input).Decode(params)
 	require.NoError(t, err, "check Decode error")
-	assert.Equal(t, bool(true), params.ParamBool, "check ParamBool")
-	assert.Equal(t, int(-42), params.ParamInt, "check ParamInt")
+	assert.Equal(t, true, params.ParamBool, "check ParamBool")
+	assert.Equal(t, -42, params.ParamInt, "check ParamInt")
 	assert.Equal(t, uint(42), params.ParamUint, "check ParamUint")
-	assert.Equal(t, float64(42.42), params.ParamFloat, "check ParamFloat")
+	assert.Equal(t, 42.42, params.ParamFloat, "check ParamFloat")
 	assert.Equal(t, complex(42, 42), params.ParamComplex, "check ParamComplex")
-	assert.Equal(t, string("forty-two"), params.ParamString, "check ParamString")
+	assert.Equal(t, "forty-two", params.ParamString, "check ParamString")
+}
+
+func TestDecodeIndirect(t *testing.T) {
+	type Params struct {
+		ParamAny     any         `ukflag:"flagAny"`
+		ParamBool    *bool       `ukflag:"flagBool"`
+		ParamInt     *int        `ukflag:"flagInt"`
+		ParamUint    *uint       `ukflag:"flagUint"`
+		ParamFloat   *float64    `ukflag:"flagFloat"`
+		ParamComplex *complex128 `ukflag:"flagComplex"`
+		ParamString  *string     `ukflag:"flagString"`
+	}
+
+	input := genInput(t,
+		"flagAny", "old-thing",
+		"flagBool", "true",
+		"flagInt", "-42",
+		"flagUint", "42",
+		"flagFloat", "42.42",
+		"flagComplex", "42+42i",
+		"flagString", "forty-two",
+	)
+
+	params := new(Params)
+
+	err := ukenc.NewDecoder(input).Decode(params)
+	require.NoError(t, err, "check Decode error")
+
+	_ = assert.NotNil(t, params.ParamAny, "check ParamAny") && assert.Equal(t, "old-thing", params.ParamAny, "check ParamAny")
+	_ = assert.NotNil(t, params.ParamBool, "check ParamBool") && assert.Equal(t, true, *params.ParamBool, "check ParamBool")
+	_ = assert.NotNil(t, params.ParamInt, "check ParamInt") && assert.Equal(t, -42, *params.ParamInt, "check ParamInt")
+	_ = assert.NotNil(t, params.ParamUint, "check ParamUint") && assert.Equal(t, uint(42), *params.ParamUint, "check ParamUint")
+	_ = assert.NotNil(t, params.ParamFloat, "check ParamFloat") && assert.Equal(t, 42.42, *params.ParamFloat, "check ParamFloat")
+	_ = assert.NotNil(t, params.ParamComplex, "check ParamComplex") && assert.Equal(t, complex(42, 42), *params.ParamComplex, "check ParamComplex")
+	_ = assert.NotNil(t, params.ParamString, "check ParamString") && assert.Equal(t, "forty-two", *params.ParamString, "check ParamString")
 }
 
 func TestDecodeTextUnmarshaler(t *testing.T) {
