@@ -35,12 +35,12 @@ func TestParamsInfo(t *testing.T) {
 	t.Run("invalid kind", func(t *testing.T) {
 		type Params string
 
-		targetIs := ukcore.ErrParams
-		targetAs := new(ukcore.ErrorParamsKind)
+		expectedIs := ukcore.ErrParams
+		expectedAs := new(ukcore.ErrorParamsKind)
 
 		_, err := ukcore.ParamsInfoOf(Params(""))
-		require.ErrorIs(t, err, targetIs)
-		assert.ErrorAs(t, err, targetAs)
+		require.ErrorIs(t, err, expectedIs)
+		assert.ErrorAs(t, err, expectedAs)
 	})
 }
 
@@ -63,12 +63,12 @@ func TestParamsInfoArgs(t *testing.T) {
 			ParamTwo []string `ukargs:"Second occurence"`
 		}
 
-		targetIs := ukcore.ErrParams
-		targetAs := new(ukcore.ErrorParamsArgsConflict)
+		expectedIs := ukcore.ErrParams
+		expectedAs := new(ukcore.ErrorParamsArgsConflict)
 
 		_, err := ukcore.ParamsInfoOf(Params{})
-		require.ErrorIs(t, err, targetIs)
-		assert.ErrorAs(t, err, targetAs)
+		require.ErrorIs(t, err, expectedIs)
+		assert.ErrorAs(t, err, expectedAs)
 	})
 
 	t.Run("conflicting args embedded", func(t *testing.T) {
@@ -81,12 +81,12 @@ func TestParamsInfoArgs(t *testing.T) {
 			ParamOne []string `ukargs:"Second occurence"`
 		}
 
-		targetIs := ukcore.ErrParams
-		targetAs := new(ukcore.ErrorParamsArgsConflict)
+		expectedIs := ukcore.ErrParams
+		expectedAs := new(ukcore.ErrorParamsArgsConflict)
 
 		_, err := ukcore.ParamsInfoOf(Params{})
-		require.ErrorIs(t, err, targetIs)
-		assert.ErrorAs(t, err, targetAs)
+		require.ErrorIs(t, err, expectedIs)
+		assert.ErrorAs(t, err, expectedAs)
 	})
 
 	t.Run("conflicting args inlined", func(t *testing.T) {
@@ -166,12 +166,12 @@ func TestParamsInfoFlag(t *testing.T) {
 			ParamTwo string `ukflag:"flagName - Second occurence"`
 		}
 
-		targetIs := ukcore.ErrParams
-		targetAs := new(ukcore.ErrorParamsFlagConflict)
+		expectedIs := ukcore.ErrParams
+		expectedAs := new(ukcore.ErrorParamsFlagConflict)
 
 		_, err := ukcore.ParamsInfoOf(Params{})
-		require.ErrorIs(t, err, targetIs)
-		assert.ErrorAs(t, err, targetAs)
+		require.ErrorIs(t, err, expectedIs)
+		assert.ErrorAs(t, err, expectedAs)
 	})
 
 	t.Run("conflicting flag implicit", func(t *testing.T) {
@@ -180,12 +180,12 @@ func TestParamsInfoFlag(t *testing.T) {
 			FlagName string
 		}
 
-		targetIs := ukcore.ErrParams
-		targetAs := new(ukcore.ErrorParamsFlagConflict)
+		expectedIs := ukcore.ErrParams
+		expectedAs := new(ukcore.ErrorParamsFlagConflict)
 
 		_, err := ukcore.ParamsInfoOf(Params{})
-		require.ErrorIs(t, err, targetIs)
-		assert.ErrorAs(t, err, targetAs)
+		require.ErrorIs(t, err, expectedIs)
+		assert.ErrorAs(t, err, expectedAs)
 	})
 
 	t.Run("conflicting flag embedded", func(t *testing.T) {
@@ -198,12 +198,12 @@ func TestParamsInfoFlag(t *testing.T) {
 			ParamOne string `ukflag:"flagName - Second occurence"`
 		}
 
-		targetIs := ukcore.ErrParams
-		targetAs := new(ukcore.ErrorParamsFlagConflict)
+		expectedIs := ukcore.ErrParams
+		expectedAs := new(ukcore.ErrorParamsFlagConflict)
 
 		_, err := ukcore.ParamsInfoOf(Params{})
-		require.ErrorIs(t, err, targetIs)
-		assert.ErrorAs(t, err, targetAs)
+		require.ErrorIs(t, err, expectedIs)
+		assert.ErrorAs(t, err, expectedAs)
 	})
 
 	t.Run("conflicting flag inlined", func(t *testing.T) {
@@ -215,11 +215,11 @@ func TestParamsInfoFlag(t *testing.T) {
 			ParamOne string `ukflag:"flagName flagName - Double occurence"`
 		}
 
-		targetIs := ukcore.ErrParams
-		targetAs := new(ukcore.ErrorParamsFlagConflict)
+		expectedIs := ukcore.ErrParams
+		expectedAs := new(ukcore.ErrorParamsFlagConflict)
 
 		_, err := ukcore.ParamsInfoOf(Params{})
-		require.ErrorIs(t, err, targetIs)
-		assert.ErrorAs(t, err, targetAs)
+		require.ErrorIs(t, err, expectedIs)
+		assert.ErrorAs(t, err, expectedAs)
 	})
 }
