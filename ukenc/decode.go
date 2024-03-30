@@ -16,72 +16,69 @@ type Decoder struct{ input ukcore.Input }
 
 func NewDecoder(input ukcore.Input) *Decoder { return &Decoder{input: input} }
 
-func (d *Decoder) Decode(v any) error {
-	val := reflect.ValueOf(v)
+func (d *Decoder) Decode(params any) error {
+	val := reflect.ValueOf(params)
 	switch {
 	case val.Kind() != reflect.Pointer:
-		return errors.New("[TODO Decode] val is non-pointer")
+		return decodeErr(val).params("destination is not a pointer")
 	case val.IsNil():
-		return errors.New("[TODO Decode] val is nil pointer")
+		return decodeErr(val).params("destination is a nil pointer")
 	}
 
 	elem := val.Elem()
 	if elem.Kind() != reflect.Struct {
-		return errors.New("[TODO Decode] elem is non-struct")
+		return decodeErr(elem).params("destination does not point to a struct")
 	}
 
 	info, err := ukcore.NewParamsInfo(elem.Type())
 	if err != nil {
+		// TODO: Wrap this appropriately
 		return err
 	}
 
-	// TODO: Decode arguments
-
-	return d.decodeFlags(elem, info)
-}
-
-func (d *Decoder) DecodeArgs(v any) error {
-	return errors.New("[TODO DecodeArgs] not yet implemented")
-}
-
-func (d *Decoder) DecodeFlags(v any) error {
-	val := reflect.ValueOf(v)
-	switch {
-	case val.Kind() != reflect.Pointer:
-		return errors.New("[TODO DecodeFlags] val is non-pointer")
-	case val.IsNil():
-		return errors.New("[TODO DecodeFlags] val is nil pointer")
-	}
-
-	elem := val.Elem()
-	if elem.Kind() != reflect.Struct {
-		return errors.New("[TODO DecodeFlags] elem is non-struct")
-	}
-
-	info, err := ukcore.NewParamsInfo(elem.Type())
-	if err != nil {
-		return err
-	}
-
-	return d.decodeFlags(elem, info)
-}
-
-func (d *Decoder) decodeFlags(val reflect.Value, info ukcore.ParamsInfo) error {
 	for _, flag := range d.input.Flags {
-		flagInfo, ok := info.Flags[flag.Name]
-		if !ok {
-			return errors.New("[TODO decodeFlags] got a flag missing from struct info")
-		}
-
-		// TODO: Do I need to handle possibly "stepping through a nil pointer"? (ugh)
-		fieldVal := val.FieldByIndex(flagInfo.FieldIndex)
-		if err := decodeFlag(fieldVal, flag); err != nil {
+		if err := d.decodeFlag(elem, info, flag); err != nil {
 			return err
 		}
 	}
 
+	return d.decodeArgs(elem, info)
+}
+
+func (d *Decoder) decodeFlag(val reflect.Value, info ukcore.ParamsInfo, flag ukcore.Flag) error {
+	flagInfo, ok := info.Flags[flag.Name]
+	if !ok {
+		return decodeErr(val).flagName(flag)
+	}
+
+	// TODO: Do I need to handle possibly "stepping through a nil pointer"? (ugh)
+	fieldVal := val.FieldByIndex(flagInfo.FieldIndex)
+
+	// TODO: Handle "custom" fields
+
+	flagDecoder, ok := flagDecoders[fieldVal.Kind()]
+	if !ok {
+		message := fmt.Sprintf("unsupported kind '%s'", fieldVal.Kind())
+		return decodeErr(val).field(fieldVal, flagInfo.FieldName, message)
+	}
+
+	if err := flagDecoder(fieldVal, flag); err != nil {
+		return decodeErr(val).flagValue(flag, err)
+	}
+
 	return nil
 }
+
+func (d *Decoder) decodeArgs(val reflect.Value, info ukcore.ParamsInfo) error {
+	// TODO
+	return nil
+}
+
+// =============================================================================
+// Args
+// =============================================================================
+
+// TODO
 
 // =============================================================================
 // Flag
@@ -114,23 +111,10 @@ var flagDecoders = map[reflect.Kind]func(reflect.Value, ukcore.Flag) error{
 	reflect.String:     decodeFlagString,
 }
 
-func decodeFlag(fieldVal reflect.Value, flag ukcore.Flag) error {
-	// TODO: Handle "custom" fields
-
-	kind := fieldVal.Kind()
-
-	if decoder, ok := flagDecoders[kind]; ok {
-		return decoder(fieldVal, flag)
-	}
-
-	return fmt.Errorf("[TODO decodeFlag] got bad field kind (%s)", kind)
-}
-
 // =============================================================================
 // Flag› Custom
 // =============================================================================
 
-// TODO: Handle interface{ Set(string) error }
 // TODO: Handle encoding.TextUnmarshaler
 
 // =============================================================================
@@ -164,7 +148,6 @@ func decodeFlagSlice(val reflect.Value, flag ukcore.Flag) error {
 func decodeFlagBool(val reflect.Value, flag ukcore.Flag) error {
 	boolVal, err := strconv.ParseBool(flag.Value)
 	if err != nil {
-		// TODO: Better error information
 		return err
 	}
 
@@ -175,7 +158,6 @@ func decodeFlagBool(val reflect.Value, flag ukcore.Flag) error {
 func decodeFlagInt(val reflect.Value, flag ukcore.Flag) error {
 	intVal, err := strconv.ParseInt(flag.Value, 10, val.Type().Bits())
 	if err != nil {
-		// TODO: Better error information
 		return err
 	}
 
@@ -186,7 +168,6 @@ func decodeFlagInt(val reflect.Value, flag ukcore.Flag) error {
 func decodeFlagUint(val reflect.Value, flag ukcore.Flag) error {
 	uintVal, err := strconv.ParseUint(flag.Value, 10, val.Type().Bits())
 	if err != nil {
-		// TODO: Better error information
 		return err
 	}
 
@@ -197,7 +178,6 @@ func decodeFlagUint(val reflect.Value, flag ukcore.Flag) error {
 func decodeFlagFloat(val reflect.Value, flag ukcore.Flag) error {
 	floatVal, err := strconv.ParseFloat(flag.Value, val.Type().Bits())
 	if err != nil {
-		// TODO: Better error information
 		return err
 	}
 
@@ -208,7 +188,6 @@ func decodeFlagFloat(val reflect.Value, flag ukcore.Flag) error {
 func decodeFlagComplex(val reflect.Value, flag ukcore.Flag) error {
 	complexVal, err := strconv.ParseComplex(flag.Value, val.Type().Bits())
 	if err != nil {
-		// TODO: Better error information
 		return err
 	}
 
