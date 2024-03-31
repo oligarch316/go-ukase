@@ -10,6 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO:
+// Replace the use of time.Date as custom field with something simpler
+// It's too tedious to read/write all these time.Date(...) calls
+
+func pointerTo[T any](val T) *T { return &val }
+
 func genInput(t *testing.T, flagPairs ...string) ukcore.Input {
 	nPairs := len(flagPairs)
 	if nPairs%2 != 0 {
@@ -39,7 +45,7 @@ func TestDecodeError(t *testing.T) {
 	}
 
 	subtests := []subtest{
-		// ----- Invalid parameters
+		// ===== Invalid parameters
 		{
 			name:     "params non-pointer",
 			expected: new(ukenc.ErrorDecodeParams),
@@ -56,7 +62,7 @@ func TestDecodeError(t *testing.T) {
 			params:   new(string),
 		},
 
-		// ----- Invalid parameters field
+		// ===== Invalid parameters field
 		{
 			name:     "field array",
 			expected: new(ukenc.ErrorDecodeField),
@@ -97,14 +103,25 @@ func TestDecodeError(t *testing.T) {
 				A struct{} `ukflag:"flagA"`
 			}),
 		},
+		// TODO:
+		// {
+		// 	name:     "field bespoke zero value interface",
+		// 	expected: new(ukenc.ErrorDecodeField),
+		// 	input:    genInput(t, "flagA", "valA"),
+		// 	params: new(struct {
+		// 		A interface{ Bespoke() } `ukflag:"flagA"`
+		// 	}),
+		// },
 
-		// ----- Invalid flag
+		// ===== Invalid flag name
 		{
 			name:     "flag name missing",
 			expected: new(ukenc.ErrorDecodeFlagName),
 			input:    genInput(t, "flagA", "valA"),
 			params:   new(struct{}),
 		},
+
+		// ===== Invalid flag value
 		{
 			name:     "flag value invalid bool",
 			expected: new(ukenc.ErrorDecodeFlagValue),
@@ -166,7 +183,9 @@ func TestDecodeError(t *testing.T) {
 	}
 }
 
-func TestDecodeBasic(t *testing.T) {
+func TestDecodeDirect(t *testing.T) {
+	// Decode into simple native go types
+
 	type Params struct {
 		ParamBool    bool       `ukflag:"flagBool"`
 		ParamInt     int        `ukflag:"flagInt"`
@@ -185,19 +204,47 @@ func TestDecodeBasic(t *testing.T) {
 		"flagString", "forty-two",
 	)
 
-	params := new(Params)
+	expected := Params{
+		ParamBool:    true,
+		ParamInt:     -42,
+		ParamUint:    42,
+		ParamFloat:   42.42,
+		ParamComplex: complex(42, 42),
+		ParamString:  "forty-two",
+	}
 
-	err := ukenc.NewDecoder(input).Decode(params)
+	var actual Params
+
+	err := ukenc.NewDecoder(input).Decode(&actual)
 	require.NoError(t, err, "check Decode error")
-	assert.Equal(t, true, params.ParamBool, "check ParamBool")
-	assert.Equal(t, -42, params.ParamInt, "check ParamInt")
-	assert.Equal(t, uint(42), params.ParamUint, "check ParamUint")
-	assert.Equal(t, 42.42, params.ParamFloat, "check ParamFloat")
-	assert.Equal(t, complex(42, 42), params.ParamComplex, "check ParamComplex")
-	assert.Equal(t, "forty-two", params.ParamString, "check ParamString")
+	assert.Equal(t, expected, actual, "check result")
+}
+
+func TestDecodeCustom(t *testing.T) {
+	// Decode into types that implement custom unmarshaling logic
+
+	type Params struct {
+		ParamTime time.Time `ukflag:"flagTime"`
+	}
+
+	input := genInput(t, "flagTime", "1985-04-12T23:20:50Z")
+
+	expected := Params{
+		ParamTime: time.Date(1985, 4, 12, 23, 20, 50, 0, time.UTC),
+	}
+
+	var actual Params
+
+	err := ukenc.NewDecoder(input).Decode(&actual)
+	require.NoError(t, err, "check Decode error")
+	assert.Equal(t, expected, actual, "check result")
 }
 
 func TestDecodeIndirect(t *testing.T) {
+	// Decode into zero value indirect types, themselves containing direct types
+	// • Interfaces should be loaded with string values
+	// • Pointers should have the correct element type created and loaded
+
 	type Params struct {
 		ParamAny     any         `ukflag:"flagAny"`
 		ParamBool    *bool       `ukflag:"flagBool"`
@@ -218,35 +265,123 @@ func TestDecodeIndirect(t *testing.T) {
 		"flagString", "forty-two",
 	)
 
-	params := new(Params)
-
-	err := ukenc.NewDecoder(input).Decode(params)
-	require.NoError(t, err, "check Decode error")
-
-	_ = assert.NotNil(t, params.ParamAny, "check ParamAny") && assert.Equal(t, "old-thing", params.ParamAny, "check ParamAny")
-	_ = assert.NotNil(t, params.ParamBool, "check ParamBool") && assert.Equal(t, true, *params.ParamBool, "check ParamBool")
-	_ = assert.NotNil(t, params.ParamInt, "check ParamInt") && assert.Equal(t, -42, *params.ParamInt, "check ParamInt")
-	_ = assert.NotNil(t, params.ParamUint, "check ParamUint") && assert.Equal(t, uint(42), *params.ParamUint, "check ParamUint")
-	_ = assert.NotNil(t, params.ParamFloat, "check ParamFloat") && assert.Equal(t, 42.42, *params.ParamFloat, "check ParamFloat")
-	_ = assert.NotNil(t, params.ParamComplex, "check ParamComplex") && assert.Equal(t, complex(42, 42), *params.ParamComplex, "check ParamComplex")
-	_ = assert.NotNil(t, params.ParamString, "check ParamString") && assert.Equal(t, "forty-two", *params.ParamString, "check ParamString")
-}
-
-func TestDecodeTextUnmarshaler(t *testing.T) {
-	type Params struct {
-		ParamTime time.Time `ukflag:"flagTime"`
-
-		// TODO: Requires indirect (pointer) implementation
-		// ParamTimePointer time.Time `ukflag:"flagTimePointer"`
+	expected := Params{
+		ParamAny:     "old-thing",
+		ParamBool:    pointerTo(true),
+		ParamInt:     pointerTo(-42),
+		ParamUint:    pointerTo[uint](42),
+		ParamFloat:   pointerTo(42.42),
+		ParamComplex: pointerTo(complex(42, 42)),
+		ParamString:  pointerTo("forty-two"),
 	}
 
-	input := genInput(t, "flagTime", "1985-04-12T23:20:50Z")
-	params := new(Params)
+	var actual Params
 
-	err := ukenc.NewDecoder(input).Decode(params)
+	err := ukenc.NewDecoder(input).Decode(&actual)
 	require.NoError(t, err, "check Decode error")
+	assert.Equal(t, expected, actual, "check result")
+}
 
-	actual := params.ParamTime
-	expected := time.Date(1985, 4, 12, 23, 20, 50, 0, time.UTC)
-	assert.Truef(t, actual.Equal(expected), "actual: %s\nexpected: %s", actual, expected)
+func TestDecodeBaroque(t *testing.T) {
+	// Decode into esoteric combinations of types
+
+	t.Run("interface->direct", func(t *testing.T) {
+		type Params struct {
+			ParamAny any `ukflag:"flagAny"`
+		}
+
+		var (
+			input    = genInput(t, "flagAny", "true")
+			expected = Params{ParamAny: true}
+			actual   = Params{ParamAny: false}
+		)
+
+		err := ukenc.NewDecoder(input).Decode(&actual)
+		require.NoError(t, err, "check Decode error")
+		assert.Equal(t, expected, actual, "check result")
+	})
+
+	t.Run("interface->custom", func(t *testing.T) {
+		type Params struct {
+			ParamAny any `ukflag:"flagAny"`
+		}
+
+		input := genInput(t, "flagAny", "1985-04-12T23:20:50Z")
+
+		expected := Params{
+			ParamAny: time.Date(1985, 4, 12, 23, 20, 50, 0, time.UTC),
+		}
+
+		actual := Params{
+			ParamAny: time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
+		}
+
+		err := ukenc.NewDecoder(input).Decode(&actual)
+		require.NoError(t, err, "check Decode error")
+		assert.Equal(t, expected, actual, "check result")
+	})
+
+	t.Run("interface->pointer", func(t *testing.T) {
+		t.Skip("TODO")
+	})
+
+	t.Run("interface->pointer->custom", func(t *testing.T) {
+		t.Skip("TODO")
+	})
+
+	t.Run("pointer->custom", func(t *testing.T) {
+		type Params struct {
+			ParamTime *time.Time `ukflag:"flagTime"`
+		}
+
+		input := genInput(t, "flagTime", "1985-04-12T23:20:50Z")
+
+		expected := Params{
+			ParamTime: pointerTo(time.Date(1985, 4, 12, 23, 20, 50, 0, time.UTC)),
+		}
+
+		var actual Params
+
+		err := ukenc.NewDecoder(input).Decode(&actual)
+		require.NoError(t, err, "check Decode error")
+		assert.Equal(t, expected, actual, "check result")
+	})
+
+	t.Run("pointer->interface", func(t *testing.T) {
+		type Params struct {
+			ParamAny *any `ukflag:"flagAny"`
+		}
+
+		input := genInput(t, "flagAny", "old-thing")
+		expected := Params{ParamAny: pointerTo[any]("old-thing")}
+		actual := Params{ParamAny: pointerTo[any](nil)}
+
+		err := ukenc.NewDecoder(input).Decode(&actual)
+		require.NoError(t, err, "check Decode error")
+		assert.Equal(t, expected, actual, "check result")
+	})
+
+	t.Run("pointer->interface->direct", func(t *testing.T) {
+		type Params struct {
+			ParamAny *any `ukflag:"flagAny"`
+		}
+
+		input := genInput(t, "flagAny", "true")
+
+		expected := Params{
+			ParamAny: pointerTo[any](true),
+		}
+
+		actual := Params{
+			ParamAny: pointerTo[any](false),
+		}
+
+		err := ukenc.NewDecoder(input).Decode(&actual)
+		require.NoError(t, err, "check Decode error")
+		assert.Equal(t, expected, actual, "check result")
+	})
+
+	t.Run("pointer->interface->custom", func(t *testing.T) {
+		t.Skip("TODO")
+	})
 }
