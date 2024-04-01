@@ -14,6 +14,9 @@ import (
 // Replace the use of time.Date as custom field with something simpler
 // It's too tedious to read/write all these time.Date(...) calls
 
+// TODO: Test decoding multiple of the same flag into basic (int)
+// TODO: Test decoding multiple of the same flag into collection (slice)
+
 func pointerTo[T any](val T) *T { return &val }
 
 func genInput(t *testing.T, flagPairs ...string) ukcore.Input {
@@ -193,6 +196,7 @@ func TestDecodeDirect(t *testing.T) {
 		ParamFloat   float64    `ukflag:"flagFloat"`
 		ParamComplex complex128 `ukflag:"flagComplex"`
 		ParamString  string     `ukflag:"flagString"`
+		ParamSlice   []int      `ukflag:"flagSlice"`
 	}
 
 	input := genInput(t,
@@ -202,6 +206,7 @@ func TestDecodeDirect(t *testing.T) {
 		"flagFloat", "42.42",
 		"flagComplex", "42+42i",
 		"flagString", "forty-two",
+		"flagSlice", "-42",
 	)
 
 	expected := Params{
@@ -211,6 +216,7 @@ func TestDecodeDirect(t *testing.T) {
 		ParamFloat:   42.42,
 		ParamComplex: complex(42, 42),
 		ParamString:  "forty-two",
+		ParamSlice:   []int{-42},
 	}
 
 	var actual Params

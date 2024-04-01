@@ -139,11 +139,7 @@ func loadTextUnmarshaler(val reflect.Value) (encoding.TextUnmarshaler, bool) {
 // Direct
 // =============================================================================
 
-var directDecoders = map[reflect.Kind]func(reflect.Value, string) error{
-	// Collection
-	reflect.Slice: decodeSlice,
-
-	// Basic
+var basicDecoders = map[reflect.Kind]func(reflect.Value, string) error{
 	reflect.Bool:       decodeBool,
 	reflect.Int:        decodeInt,
 	reflect.Int8:       decodeInt,
@@ -163,19 +159,30 @@ var directDecoders = map[reflect.Kind]func(reflect.Value, string) error{
 }
 
 func decodeDirect(dst reflect.Value, src string) (bool, error) {
-	if decoder, ok := directDecoders[dst.Kind()]; ok {
-		return true, decoder(dst, src)
+	kind := dst.Kind()
+
+	if kind == reflect.Slice {
+		return true, decodeSlice(dst, src)
+	}
+
+	if decodeBasic, ok := basicDecoders[kind]; ok {
+		return true, decodeBasic(dst, src)
 	}
 
 	return false, nil
 }
 
-func decodeSlice(dstl reflect.Value, src string) error {
-	// TODO:
-	// Reminder, in builtin there's `type byte = uint8`
-	// Possibly want special case behavior for Slice<uint8>
+func decodeSlice(dst reflect.Value, src string) error {
+	elemType := dst.Type().Elem()
+	elemVal := reflect.New(elemType).Elem()
 
-	return errors.New("[TODO decodeFlagSlice] not yet implemented")
+	if err := decode(elemVal, src); err != nil {
+		return err
+	}
+
+	val := reflect.Append(dst, elemVal)
+	dst.Set(val)
+	return nil
 }
 
 func decodeBool(dst reflect.Value, src string) error {
