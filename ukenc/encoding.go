@@ -80,8 +80,21 @@ func (Decoder) decodeFlag(structVal reflect.Value, info ukcore.ParamsInfo, flag 
 }
 
 func (Decoder) decodeArgs(structVal reflect.Value, info ukcore.ParamsInfo, args []string) error {
-	// NOTE: Don't forget that (as it stands) input.Args may be nil!
+	switch {
+	case len(args) == 0:
+		return nil
+	case info.Args == nil:
+		return errors.New("[TODO decodeArgs] info.Args is nil")
+	}
 
-	// TODO
+	// TODO: Do I need to handle possibly "stepping through a nil pointer"? (ugh)
+	argsVal := structVal.FieldByIndex(info.Args.FieldIndex)
+
+	for _, arg := range args {
+		if err := decode(argsVal, arg); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

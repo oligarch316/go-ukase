@@ -16,6 +16,7 @@ import (
 
 // TODO: Test decoding multiple of the same flag into basic (int)
 // TODO: Test decoding multiple of the same flag into collection (slice)
+// TODO: Test args decoding
 
 func pointerTo[T any](val T) *T { return &val }
 
