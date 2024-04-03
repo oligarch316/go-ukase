@@ -6,73 +6,127 @@ import (
 	"fmt"
 )
 
+var (
+	muxDefaultHandler = Handler(muxHandleUnspecified)
+	muxDefaultCommand = Command{Executor: muxDefaultHandler, DefaultParams: struct{}{}}
+	muxDefaultConfig  = MuxConfig{
+		AllowOverwrite: false,
+		DefaultCommand: muxDefaultCommand,
+	}
+)
+
+func muxHandleUnspecified(_ context.Context, input Input) error {
+	return ErrorMuxNotSpecified{Input: input}
+}
+
+type muxCommand struct {
+	executor      Executor
+	paramsDefault any
+	paramsInfo    ParamsInfo
+}
+
+func newMuxCommand(executor Executor, paramsDefault any) (command muxCommand, err error) {
+	command.executor = executor
+	command.paramsDefault = paramsDefault
+	command.paramsInfo, err = ParamsInfoOf(paramsDefault)
+	return
+}
+
 type muxNode struct {
-	handler Handler
-	info    ParamsInfo
+	muxCommand
+	children  map[string]*muxNode
+	specified bool
+}
+
+func newMuxNode(command muxCommand) *muxNode {
+	children := make(map[string]*muxNode)
+	return &muxNode{children: children, muxCommand: command}
+}
+
+type MuxConfig struct {
+	AllowOverwrite bool
+	DefaultCommand Command
 }
 
 type Mux struct {
-	children map[string]*Mux
-	node     *muxNode
+	rootNode *muxNode
+
+	allowOverwrite bool
+	defaultCommand muxCommand
 }
 
-func NewMux() *Mux { return &Mux{children: make(map[string]*Mux)} }
-
-func (m *Mux) MustHandle(handler Handler, defaultParams any, target ...string) {
-	if err := m.Handle(handler, defaultParams, target...); err != nil {
-		panic(err)
+func NewMux(opts ...func(*MuxConfig)) (*Mux, error) {
+	config := muxDefaultConfig
+	for _, opt := range opts {
+		opt(&config)
 	}
+
+	allowOverwrite := config.AllowOverwrite
+	defaultExecutor := config.DefaultCommand.Executor
+	defaultParams := config.DefaultCommand.DefaultParams
+
+	defaultCommand, err := newMuxCommand(defaultExecutor, defaultParams)
+	if err != nil {
+		return nil, err
+	}
+
+	mux := &Mux{
+		rootNode:       newMuxNode(defaultCommand),
+		allowOverwrite: allowOverwrite,
+		defaultCommand: defaultCommand,
+	}
+
+	return mux, nil
 }
 
-func (m *Mux) Handle(handler Handler, defaultParams any, target ...string) error {
-	info, err := ParamsInfoOf(defaultParams)
+func (m *Mux) Register(executor Executor, defaultParams any, target ...string) error {
+	command, err := newMuxCommand(executor, defaultParams)
 	if err != nil {
 		return err
 	}
 
-	current := m
+	node := m.rootNode
 
 	for _, childName := range target {
-		child, ok := current.children[childName]
+		child, ok := node.children[childName]
 		if !ok {
-			child = NewMux()
-			current.children[childName] = child
+			child = newMuxNode(m.defaultCommand)
+			node.children[childName] = child
 		}
 
-		current = child
+		node = child
 	}
 
-	if current.node != nil {
-		// TODO: if !opts.AllowOverwrite -> return error
+	if node.specified && !m.allowOverwrite {
+		return errors.New("[TODO Add] diallowed overwrite")
 	}
 
-	current.node = &muxNode{handler: handler, info: info}
+	node.muxCommand, node.specified = command, true
 	return nil
 }
 
-func (m *Mux) Run(ctx context.Context, values []string) error {
+func (m *Mux) Execute(ctx context.Context, values []string) error {
 	if len(values) == 0 {
 		return errors.New("[TODO Run] empty vales")
 	}
 
-	// Consume the 1st value (program name) as the root command
-	target := Target{values[0]}
-	parser := NewParser(values[1:])
+	// Consume the 1st value as the program name, remainder as raw input
+	programName, parser := values[0], NewParser(values[1:])
 
-	// Set up
-	input := Input{Target: target}
-	current := m
+	// Initialize
+	input := Input{Target: []string{programName}}
+	node := m.rootNode
 
 	for {
-		// ----- Flags
-		flags, err := parser.ParseFlags(current.info())
+		// Consume flag values for the current node
+		flags, err := parser.ParseFlags(node.paramsInfo)
 		if err != nil {
 			return err
 		}
 
 		input.Flags = append(input.Flags, flags...)
 
-		// ----- Subcommands
+		// Check for subcommand
 		token := parser.ParseToken()
 
 		if token.Kind == KindDelim || token.Kind == KindEOF {
@@ -80,41 +134,22 @@ func (m *Mux) Run(ctx context.Context, values []string) error {
 		}
 
 		if token.Kind != KindString {
-			return fmt.Errorf("[TODO Run] <INTERNAL> got an unexpected token kind (%s)", token.Kind)
+			return fmt.Errorf("[TODO Execute] <INTERNAL> got an unexpected token kind (%s)", token.Kind)
 		}
 
-		child, ok := current.children[token.Value]
+		child, ok := node.children[token.Value]
 		if !ok {
 			input.Args = append(input.Args, token.Value)
 			break
 		}
 
 		input.Target = append(input.Target, token.Value)
-		current = child
+		node = child
 	}
 
 	// Consume any remaining values as arguments
 	input.Args = append(input.Args, parser.Flush()...)
 
-	// Delegate to handler
-	return current.handler()(ctx, input)
-}
-
-func (m Mux) info() ParamsInfo {
-	if m.node != nil {
-		return m.node.info
-	}
-
-	return paramsInfoEmpty
-}
-
-func (m Mux) handler() Handler {
-	if m.node != nil {
-		return m.node.handler
-	}
-
-	// TODO: Parameterize
-	return func(context.Context, Input) error {
-		return errors.New("TODO: default handler stuffz")
-	}
+	// Delegate to executor
+	return node.executor.Execute(ctx, input)
 }

@@ -89,4 +89,15 @@ func (epfc ErrorParamsFlagConflict) Error() string {
 // Mux
 // =============================================================================
 
-// TODO
+var ErrMux = errors.New("TODO: mux related error")
+
+type errorMux struct{}
+
+func (errorMux) Is(target error) bool { return target == ErrMux }
+
+type ErrorMuxNotSpecified struct {
+	errorMux
+	Input Input
+}
+
+func (emns ErrorMuxNotSpecified) Error() string { return "TODO" }
