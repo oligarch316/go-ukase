@@ -17,6 +17,8 @@ import (
 // TODO: Test decoding multiple of the same flag into basic (int)
 // TODO: Test decoding multiple of the same flag into collection (slice)
 // TODO: Test args decoding
+// TODO: Test embedded struct fields
+// TODO: Test inlined struct fields
 
 func pointerTo[T any](val T) *T { return &val }
 
@@ -36,11 +38,6 @@ func genInput(t *testing.T, flagPairs ...string) ukcore.Input {
 }
 
 func TestDecodeError(t *testing.T) {
-	// TODO: ???
-	// - field kind == reflect.Invalid
-	// - field kind == reflect.Uintptr
-	// - field kind == reflect.UnsafePointer
-
 	type subtest struct {
 		name     string
 		expected error
@@ -390,5 +387,89 @@ func TestDecodeBaroque(t *testing.T) {
 
 	t.Run("pointer->interface->custom", func(t *testing.T) {
 		t.Skip("TODO")
+	})
+}
+
+func TestDecodeEmbedded(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		type Embedded struct {
+			ParamEmbedded string `ukflag:"flagEmbedded"`
+		}
+
+		type Params struct {
+			Embedded
+			ParamStandard string `ukflag:"flagStandard"`
+		}
+
+		input := genInput(t,
+			"flagEmbedded", "valEmbedded",
+			"flagStandard", "valStandard",
+		)
+
+		var actual, expected Params
+
+		expected.ParamEmbedded = "valEmbedded"
+		expected.ParamStandard = "valStandard"
+
+		err := ukenc.NewDecoder(input).Decode(&actual)
+		require.NoError(t, err, "check Decode error")
+		assert.Equal(t, expected, actual, "check result")
+	})
+
+	t.Run("pointer zero", func(t *testing.T) {
+		type Embedded struct {
+			ParamEmbedded string `ukflag:"flagEmbedded"`
+		}
+
+		type Params struct {
+			*Embedded
+			ParamStandard string `ukflag:"flagStandard"`
+		}
+
+		input := genInput(t,
+			"flagEmbedded", "valEmbedded",
+			"flagStandard", "valStandard",
+		)
+
+		expected := Params{
+			Embedded:      &Embedded{ParamEmbedded: "valEmbedded"},
+			ParamStandard: "valStandard",
+		}
+
+		actual := Params{}
+
+		err := ukenc.NewDecoder(input).Decode(&actual)
+		require.NoError(t, err, "check Decode error")
+		assert.Equal(t, expected, actual, "check result")
+	})
+
+	t.Run("pointer informed", func(t *testing.T) {
+		type Embedded struct {
+			ParamEmbedded string `ukflag:"flagEmbedded"`
+		}
+
+		type Params struct {
+			*Embedded
+			ParamStandard string `ukflag:"flagStandard"`
+		}
+
+		input := genInput(t,
+			"flagEmbedded", "valEmbedded",
+			"flagStandard", "valStandard",
+		)
+
+		expected := Params{
+			Embedded:      &Embedded{ParamEmbedded: "valEmbedded"},
+			ParamStandard: "valStandard",
+		}
+
+		actual := Params{
+			Embedded:      &Embedded{ParamEmbedded: "defaultEmbedded"},
+			ParamStandard: "defaultStandard",
+		}
+
+		err := ukenc.NewDecoder(input).Decode(&actual)
+		require.NoError(t, err, "check Decode error")
+		assert.Equal(t, expected, actual, "check result")
 	})
 }

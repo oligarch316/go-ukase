@@ -59,14 +59,13 @@ func (Decoder) loadInfo(structVal reflect.Value) (ukcore.ParamsInfo, error) {
 	return info, err
 }
 
-func (Decoder) decodeFlag(structVal reflect.Value, info ukcore.ParamsInfo, flag ukcore.Flag) error {
+func (d Decoder) decodeFlag(structVal reflect.Value, info ukcore.ParamsInfo, flag ukcore.Flag) error {
 	flagInfo, ok := info.Flags[flag.Name]
 	if !ok {
 		return decodeErr(structVal).flagName(flag)
 	}
 
-	// TODO: Do I need to handle possibly "stepping through a nil pointer"? (ugh)
-	fieldVal := structVal.FieldByIndex(flagInfo.FieldIndex)
+	fieldVal := d.fieldByIndex(structVal, flagInfo.FieldIndex)
 
 	if err := decode(fieldVal, flag.Value); err != nil {
 		if errors.Is(err, errUnsupportedKind) {
@@ -79,7 +78,7 @@ func (Decoder) decodeFlag(structVal reflect.Value, info ukcore.ParamsInfo, flag 
 	return nil
 }
 
-func (Decoder) decodeArgs(structVal reflect.Value, info ukcore.ParamsInfo, args []string) error {
+func (d Decoder) decodeArgs(structVal reflect.Value, info ukcore.ParamsInfo, args []string) error {
 	switch {
 	case len(args) == 0:
 		return nil
@@ -87,8 +86,7 @@ func (Decoder) decodeArgs(structVal reflect.Value, info ukcore.ParamsInfo, args 
 		return errors.New("[TODO decodeArgs] info.Args is nil")
 	}
 
-	// TODO: Do I need to handle possibly "stepping through a nil pointer"? (ugh)
-	argsVal := structVal.FieldByIndex(info.Args.FieldIndex)
+	argsVal := d.fieldByIndex(structVal, info.Args.FieldIndex)
 
 	for _, arg := range args {
 		if err := decode(argsVal, arg); err != nil {
@@ -97,4 +95,26 @@ func (Decoder) decodeArgs(structVal reflect.Value, info ukcore.ParamsInfo, args 
 	}
 
 	return nil
+}
+
+// Re-implementation of `reflect.FieldByIndex`
+// This version does not panic or error when "stepping through a nil pointer"
+// Instead, it sets the pointer to a newly initialized element (zero) value
+func (Decoder) fieldByIndex(structVal reflect.Value, index []int) (fieldVal reflect.Value) {
+	fieldVal, index = structVal.Field(index[0]), index[1:]
+
+	for _, i := range index {
+		if fieldVal.Kind() == reflect.Pointer {
+			if fieldVal.IsZero() {
+				newVal := reflect.New(fieldVal.Type().Elem())
+				fieldVal.Set(newVal)
+			}
+
+			fieldVal = fieldVal.Elem()
+		}
+
+		fieldVal = fieldVal.Field(i)
+	}
+
+	return
 }
