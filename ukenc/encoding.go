@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/oligarch316/go-ukase/ukcore"
+	"github.com/oligarch316/go-ukase/ukspec"
 )
 
 type Decoder struct{ input ukcore.Input }
@@ -17,18 +18,18 @@ func (d *Decoder) Decode(params any) error {
 		return err
 	}
 
-	info, err := d.loadInfo(val)
+	spec, err := d.loadSpec(val)
 	if err != nil {
 		return err
 	}
 
 	for _, flag := range d.input.Flags {
-		if err := d.decodeFlag(val, info, flag); err != nil {
+		if err := d.decodeFlag(val, spec, flag); err != nil {
 			return err
 		}
 	}
 
-	return d.decodeArgs(val, info, d.input.Args)
+	return d.decodeArgs(val, spec, d.input.Args)
 }
 
 func (Decoder) loadValue(v any) (reflect.Value, error) {
@@ -48,28 +49,29 @@ func (Decoder) loadValue(v any) (reflect.Value, error) {
 	return elem, nil
 }
 
-func (Decoder) loadInfo(structVal reflect.Value) (ukcore.ParamsInfo, error) {
-	// TODO: Consider caching params info
+func (Decoder) loadSpec(structVal reflect.Value) (ukspec.Params, error) {
+	// TODO
+	opts := []ukspec.Option{}
 
-	info, err := ukcore.NewParamsInfo(structVal.Type())
+	spec, err := ukspec.New(structVal.Type(), opts...)
 	if err != nil {
 		// TODO: Wrap error appropriately
 	}
 
-	return info, err
+	return spec, err
 }
 
-func (d Decoder) decodeFlag(structVal reflect.Value, info ukcore.ParamsInfo, flag ukcore.Flag) error {
-	flagInfo, ok := info.Flags[flag.Name]
+func (d Decoder) decodeFlag(structVal reflect.Value, spec ukspec.Params, flag ukcore.Flag) error {
+	flagSpec, ok := spec.Flags[flag.Name]
 	if !ok {
 		return decodeErr(structVal).flagName(flag)
 	}
 
-	fieldVal := d.fieldByIndex(structVal, flagInfo.FieldIndex)
+	fieldVal := d.fieldByIndex(structVal, flagSpec.FieldIndex)
 
 	if err := decode(fieldVal, flag.Value); err != nil {
 		if errors.Is(err, errUnsupportedKind) {
-			return decodeErr(structVal).field(fieldVal, flagInfo.FieldName, err)
+			return decodeErr(structVal).field(fieldVal, flagSpec.FieldName, err)
 		}
 
 		return decodeErr(structVal).flagValue(flag, err)
@@ -78,15 +80,15 @@ func (d Decoder) decodeFlag(structVal reflect.Value, info ukcore.ParamsInfo, fla
 	return nil
 }
 
-func (d Decoder) decodeArgs(structVal reflect.Value, info ukcore.ParamsInfo, args []string) error {
+func (d Decoder) decodeArgs(structVal reflect.Value, spec ukspec.Params, args []string) error {
 	switch {
 	case len(args) == 0:
 		return nil
-	case info.Args == nil:
-		return errors.New("[TODO decodeArgs] info.Args is nil")
+	case spec.Args == nil:
+		return errors.New("[TODO decodeArgs] have args but not spec")
 	}
 
-	argsVal := d.fieldByIndex(structVal, info.Args.FieldIndex)
+	argsVal := d.fieldByIndex(structVal, spec.Args.FieldIndex)
 
 	for _, arg := range args {
 		if err := decode(argsVal, arg); err != nil {

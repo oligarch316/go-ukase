@@ -397,7 +397,7 @@ func TestDecodeEmbedded(t *testing.T) {
 		}
 
 		type Params struct {
-			Embedded
+			Embedded      `ukase:"inline"`
 			ParamStandard string `ukflag:"flagStandard"`
 		}
 
@@ -422,7 +422,7 @@ func TestDecodeEmbedded(t *testing.T) {
 		}
 
 		type Params struct {
-			*Embedded
+			*Embedded     `ukase:"inline"`
 			ParamStandard string `ukflag:"flagStandard"`
 		}
 
@@ -449,7 +449,7 @@ func TestDecodeEmbedded(t *testing.T) {
 		}
 
 		type Params struct {
-			*Embedded
+			*Embedded     `ukase:"inline"`
 			ParamStandard string `ukflag:"flagStandard"`
 		}
 
