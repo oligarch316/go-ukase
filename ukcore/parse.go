@@ -3,7 +3,13 @@ package ukcore
 import (
 	"errors"
 	"fmt"
+
+	"github.com/oligarch316/go-ukase/ukspec"
 )
+
+// =============================================================================
+// Token
+// =============================================================================
 
 type TokenKind int
 
@@ -75,76 +81,84 @@ func newToken(str string) Token {
 	}
 }
 
-type Parser struct{ values []string }
+// =============================================================================
+// Parser
+// =============================================================================
 
-func NewParser(values []string) *Parser { return &Parser{values: values} }
+type Parser []string
 
-func (p *Parser) Flush() (args []string) {
-	args, p.values = p.values, nil
-	return
-}
+func (p Parser) Flush() []string { return p }
 
-func (p *Parser) ParseToken() Token {
-	if len(p.values) == 0 {
+func (p *Parser) ConsumeToken() Token {
+	if len(*p) == 0 {
 		return Token{Kind: KindEOF}
 	}
 
-	token := newToken(p.values[0])
-
-	p.values = p.values[1:]
-	return token
+	val := p.consumeValue()
+	return newToken(val)
 }
 
-func (p *Parser) ParseFlags(info ParamsInfo) ([]Flag, error) {
+func (p *Parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]Flag, error) {
 	var flags []Flag
 
-	for len(p.values) > 0 {
-		nextToken := newToken(p.values[0])
+	for len(*p) > 0 {
+		nextToken := newToken((*p)[0])
 
 		if nextToken.Kind == KindDelim || nextToken.Kind == KindString {
 			return flags, nil
 		}
 
 		if nextToken.Kind == KindEmpty {
-			// Consume the empty token
-			p.values = p.values[1:]
+			// Consume empty token
+			_ = p.consumeValue()
 			continue
 		}
 
 		if nextToken.Kind == KindFlag {
-			// Consume the flag-name
-			p.values = p.values[1:]
-
-			flagInfo, ok := info.Flags[nextToken.Value]
+			flagSpec, ok := specs[nextToken.Value]
 			if !ok {
-				return flags, errors.New("[TODO ParseFlags] got unknown flag name")
+				return flags, errors.New("[TODO ConsumeFlags] got an unknown flag name")
 			}
 
-			flagBool := flagInfo.IsBoolFlag()
-			peekEmpty := len(p.values) == 0
-			peekBool := flagBool && !peekEmpty && flagInfo.CheckBoolFlag(p.values[0])
-
-			if !flagBool && peekEmpty {
-				// Required flag-value is not available
-				return flags, errors.New("[TODO ParseFlags] got non-bool flag with empty peek")
+			// Consume the flag-name and flag-value
+			flagName := p.consumeValue()
+			flagVal, err := p.consumeFlagValue(flagSpec)
+			if err != nil {
+				return flags, err
 			}
 
-			if flagBool && (peekEmpty || !peekBool) {
-				// Optional flag-value is either unavailable or inappropriate
-				flags = append(flags, Flag{Name: nextToken.Value, Value: "true"})
-				continue
-			}
-
-			// Flag-value is available and appropriate
-			flags = append(flags, Flag{Name: nextToken.Value, Value: p.values[0]})
-
-			// Consume the flag-value
-			p.values = p.values[1:]
+			flags = append(flags, Flag{Name: flagName, Value: flagVal})
 			continue
 		}
 
-		return flags, errors.New("[TODO ParseFlags] got a bad token kind")
+		return flags, errors.New("[TODO ConsumeFlags] got a bad token kind")
 	}
 
 	return flags, nil
+}
+
+func (p *Parser) consumeFlagValue(spec ukspec.Flag) (string, error) {
+	peekEmpty := len(*p) == 0
+	peekValid := !peekEmpty && spec.Elide.Consumable((*p)[0])
+
+	if !spec.Elide.Allow && peekEmpty {
+		// Required flag-value is not available
+		// ⇒ Fail
+		return "", errors.New("[TODO consumeFlagValue] got a non-eliable flag with empty peek")
+	}
+
+	if spec.Elide.Allow && (peekEmpty || !peekValid) {
+		// Optional flag-value is either unavailable or inappropriate
+		// ⇒ Return placeholder as flag-value
+		return "true", nil
+	}
+
+	// Flag value is available and appropriate
+	// ⇒ Consume and return actual value as flag-value
+	return p.consumeValue(), nil
+}
+
+func (p *Parser) consumeValue() (val string) {
+	val, *p = (*p)[0], (*p)[1:]
+	return
 }

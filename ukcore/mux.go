@@ -4,130 +4,88 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/oligarch316/go-ukase/ukspec"
 )
 
-var (
-	muxDefaultHandler = Handler(muxHandleUnspecified)
-	muxDefaultCommand = Command{Executor: muxDefaultHandler, DefaultParams: struct{}{}}
-	muxDefaultConfig  = MuxConfig{
-		AllowOverwrite: false,
-		DefaultCommand: muxDefaultCommand,
-	}
-)
+// =============================================================================
+// Input
+// =============================================================================
 
-func muxHandleUnspecified(_ context.Context, input Input) error {
-	return ErrorMuxNotSpecified{Input: input}
+type Flag struct{ Name, Value string }
+
+type Input struct {
+	Target, Args []string
+	Flags        []Flag
 }
 
-type muxCommand struct {
-	executor      Executor
-	paramsDefault any
-	paramsInfo    ParamsInfo
+type Exec interface {
+	Execute(context.Context, Input) error
 }
 
-func newMuxCommand(executor Executor, paramsDefault any) (command muxCommand, err error) {
-	command.executor = executor
-	command.paramsDefault = paramsDefault
-	command.paramsInfo, err = ParamsInfoOf(paramsDefault)
-	return
-}
-
-type muxNode struct {
-	muxCommand
-	children  map[string]*muxNode
-	specified bool
-}
-
-func newMuxNode(command muxCommand) *muxNode {
-	children := make(map[string]*muxNode)
-	return &muxNode{children: children, muxCommand: command}
-}
-
-type MuxConfig struct {
-	AllowOverwrite bool
-	DefaultCommand Command
-}
+// =============================================================================
+// Mux
+// =============================================================================
 
 type Mux struct {
-	rootNode *muxNode
-
-	allowOverwrite bool
-	defaultCommand muxCommand
+	config Config
+	root   *muxNode
 }
 
-func NewMux(opts ...func(*MuxConfig)) (*Mux, error) {
-	config := muxDefaultConfig
-	for _, opt := range opts {
-		opt(&config)
+func New(opts ...Option) *Mux {
+	return &Mux{
+		config: newConfig(opts),
+		root:   newMuxNode(),
 	}
-
-	allowOverwrite := config.AllowOverwrite
-	defaultExecutor := config.DefaultCommand.Executor
-	defaultParams := config.DefaultCommand.DefaultParams
-
-	defaultCommand, err := newMuxCommand(defaultExecutor, defaultParams)
-	if err != nil {
-		return nil, err
-	}
-
-	mux := &Mux{
-		rootNode:       newMuxNode(defaultCommand),
-		allowOverwrite: allowOverwrite,
-		defaultCommand: defaultCommand,
-	}
-
-	return mux, nil
 }
 
-func (m *Mux) Register(executor Executor, defaultParams any, target ...string) error {
-	command, err := newMuxCommand(executor, defaultParams)
-	if err != nil {
+func (m *Mux) Register(exec Exec, spec ukspec.Params, target ...string) error {
+	if err := m.copyFlags(spec.Flags); err != nil {
 		return err
 	}
 
-	node := m.rootNode
+	node := m.root
 
 	for _, childName := range target {
 		child, ok := node.children[childName]
 		if !ok {
-			child = newMuxNode(m.defaultCommand)
+			child = newMuxNode()
 			node.children[childName] = child
 		}
 
+		node.copyFlags(spec.Flags)
 		node = child
 	}
 
-	if node.specified && !m.allowOverwrite {
-		return errors.New("[TODO Add] diallowed overwrite")
+	if node.exec != nil && !m.config.MuxOverwrite {
+		return errors.New("[TODO Register] overwrite not allowed")
 	}
 
-	node.muxCommand, node.specified = command, true
+	node.exec = exec
 	return nil
 }
 
 func (m *Mux) Execute(ctx context.Context, values []string) error {
 	if len(values) == 0 {
-		return errors.New("[TODO Run] empty vales")
+		return errors.New("[TODO Execute] empty values")
 	}
 
-	// Consume the 1st value as the program name, remainder as raw input
-	programName, parser := values[0], NewParser(values[1:])
-
-	// Initialize
+	// Set up
+	programName, parser := values[0], Parser(values[1:])
 	input := Input{Target: []string{programName}}
-	node := m.rootNode
+	node := m.root
 
 	for {
-		// Consume flag values for the current node
-		flags, err := parser.ParseFlags(node.paramsInfo)
+		// Flags
+		flags, err := parser.ConsumeFlags(node.flags)
 		if err != nil {
 			return err
 		}
 
 		input.Flags = append(input.Flags, flags...)
 
-		// Check for subcommand
-		token := parser.ParseToken()
+		// Subcommands
+		token := parser.ConsumeToken()
 
 		if token.Kind == KindDelim || token.Kind == KindEOF {
 			break
@@ -147,9 +105,62 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 		node = child
 	}
 
-	// Consume any remaining values as arguments
+	// Args
 	input.Args = append(input.Args, parser.Flush()...)
 
-	// Delegate to executor
-	return node.executor.Execute(ctx, input)
+	// Exec
+	if node.exec != nil {
+		return node.exec.Execute(ctx, input)
+	}
+
+	return m.config.ExecDefault.Execute(ctx, input)
+}
+
+func (m *Mux) copyFlags(flags map[string]ukspec.Flag) error {
+	checkLevel := m.config.FlagCheck
+
+	for name, spec := range flags {
+		extant, exists := m.root.flags[name]
+		if !exists {
+			m.root.flags[name] = spec
+			continue
+		}
+
+		elideMatch := extant.Elide.Allow == spec.Elide.Allow
+		typeMatch := extant.Type == spec.Type
+
+		switch {
+		case checkLevel == FlagCheckElide && !elideMatch:
+			return errors.New("[TODO copyFlags] flag elide conflict")
+		case checkLevel == FlagCheckType && !typeMatch:
+			return errors.New("[TODO copyFlags] flag type conflict")
+		}
+
+		m.root.flags[name] = spec
+	}
+
+	return nil
+}
+
+// =============================================================================
+// Mux Node
+// =============================================================================
+
+type muxNode struct {
+	exec     Exec
+	flags    map[string]ukspec.Flag
+	children map[string]*muxNode
+}
+
+func newMuxNode() *muxNode {
+	return &muxNode{
+		flags:    make(map[string]ukspec.Flag),
+		children: make(map[string]*muxNode),
+	}
+}
+
+func (mn *muxNode) copyFlags(flags map[string]ukspec.Flag) {
+	for name, spec := range flags {
+		mn.flags[name] = spec
+	}
 }
