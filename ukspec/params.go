@@ -25,6 +25,17 @@ type Params struct {
 	Inlines map[reflect.Type]Inline
 }
 
+func Load[T any](opts ...Option) (Params, error) {
+	var tmp [0]T
+	t := reflect.TypeOf(tmp).Elem()
+	return New(t, opts...)
+}
+
+func Parse(v any, opts ...Option) (Params, error) {
+	t := reflect.TypeOf(v)
+	return New(t, opts...)
+}
+
 func New(t reflect.Type, opts ...Option) (Params, error) {
 	if t.Kind() != reflect.Struct {
 		return Params{}, errors.New("[TODO New] not a struct")

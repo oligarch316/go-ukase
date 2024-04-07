@@ -32,7 +32,7 @@ func TestBasic(t *testing.T) {
 		Args []string `ukase:"args"`
 	}
 
-	params, err := ukspec.Create[Params]()
+	params, err := ukspec.Load[Params]()
 	require.NoError(t, err, "check Create error")
 
 	t.Logf("TODO: %+v\n", params)
