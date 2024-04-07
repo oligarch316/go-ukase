@@ -1,12 +1,6 @@
 package ukspec
 
 // =============================================================================
-// Option
-// =============================================================================
-
-type Option interface{ UkaseApplySpec(*Config) }
-
-// =============================================================================
 // Config
 // =============================================================================
 
@@ -16,9 +10,16 @@ var defaultConfig = Config{
 	ElideDefaultConsumable: defaultConsumable,
 }
 
+type Option interface{ UkaseApplySpec(*Config) }
+
 type Config struct {
-	ElideBoolType          bool
-	ElideIsBoolFlag        bool
+	// TODO: Document
+	ElideBoolType bool
+
+	// TODO: Document
+	ElideIsBoolFlag bool
+
+	// TODO: Document
 	ElideDefaultConsumable func(string) bool
 }
 
@@ -46,5 +47,5 @@ func ConsumableSet(valid ...string) func(string) bool {
 		set[item] = struct{}{}
 	}
 
-	return func(text string) bool { _, ok := set[text]; return ok }
+	return func(s string) (ok bool) { _, ok = set[s]; return }
 }
