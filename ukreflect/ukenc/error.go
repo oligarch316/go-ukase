@@ -20,37 +20,39 @@ func (errorDecode) Is(target error) bool { return target == ErrDecode }
 
 type ErrorDecodeParams struct {
 	errorDecode
-	message string
+	err error
 }
 
-func (ed errorDecode) params(message string) ErrorDecodeParams {
-	return ErrorDecodeParams{errorDecode: ed, message: message}
+func (ed errorDecode) params(err error) ErrorDecodeParams {
+	return ErrorDecodeParams{errorDecode: ed, err: err}
 }
+
+func (edtt ErrorDecodeParams) Unwrap() error { return edtt.err }
 
 func (edtt ErrorDecodeParams) Error() string {
-	return fmt.Sprintf("invalid parameters (%s): %s", edtt.ParamsType, edtt.message)
+	return fmt.Sprintf("invalid parameters (%s): %s", edtt.ParamsType, edtt.err)
 }
 
 type ErrorDecodeField struct {
 	errorDecode
-	error
 	FieldType reflect.Type
 	FieldName string
+	err       error
 }
 
 func (ed errorDecode) field(field reflect.Value, fieldName string, err error) ErrorDecodeField {
 	return ErrorDecodeField{
 		errorDecode: ed,
-		error:       err,
 		FieldType:   field.Type(),
 		FieldName:   fieldName,
+		err:         err,
 	}
 }
 
-func (edft ErrorDecodeField) Unwrap() error { return edft.error }
+func (edft ErrorDecodeField) Unwrap() error { return edft.err }
 
 func (edft ErrorDecodeField) Error() string {
-	return fmt.Sprintf("invalid parameters field '%s' (%s): %s", edft.FieldName, edft.FieldType, edft.error)
+	return fmt.Sprintf("invalid parameters field '%s' (%s): %s", edft.FieldName, edft.FieldType, edft.err)
 }
 
 type ErrorDecodeFlagName struct {
@@ -68,16 +70,16 @@ func (edfn ErrorDecodeFlagName) Error() string {
 
 type ErrorDecodeFlagValue struct {
 	errorDecode
-	error
 	Flag ukcore.Flag
+	err  error
 }
 
 func (ed errorDecode) flagValue(flag ukcore.Flag, err error) ErrorDecodeFlagValue {
-	return ErrorDecodeFlagValue{errorDecode: ed, error: err, Flag: flag}
+	return ErrorDecodeFlagValue{errorDecode: ed, err: err, Flag: flag}
 }
 
-func (edfv ErrorDecodeFlagValue) Unwrap() error { return edfv.error }
+func (edfv ErrorDecodeFlagValue) Unwrap() error { return edfv.err }
 
 func (edfv ErrorDecodeFlagValue) Error() string {
-	return fmt.Sprintf("invalid value for flag '%s': %s", edfv.Flag.Name, edfv.error)
+	return fmt.Sprintf("invalid value for flag '%s': %s", edfv.Flag.Name, edfv.err)
 }

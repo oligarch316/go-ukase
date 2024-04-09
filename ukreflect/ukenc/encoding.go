@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/oligarch316/go-ukase/ukcore"
+	"github.com/oligarch316/go-ukase/ukreflect"
 	"github.com/oligarch316/go-ukase/ukspec"
 )
 
@@ -33,20 +34,13 @@ func (d *Decoder) Decode(params any) error {
 }
 
 func (Decoder) loadValue(v any) (reflect.Value, error) {
-	val := reflect.ValueOf(v)
-	switch {
-	case val.Kind() != reflect.Pointer:
-		return val, decodeErr(val).params("destination is not a pointer")
-	case val.IsNil():
-		return val, decodeErr(val).params("destination is a nil pointer")
+	val, err := ukreflect.LoadValueOf(v)
+	if err != nil {
+		val = reflect.ValueOf(v)
+		err = decodeErr(val).params(err)
 	}
 
-	elem := val.Elem()
-	if elem.Kind() != reflect.Struct {
-		return elem, decodeErr(elem).params("destination does not point to a struct")
-	}
-
-	return elem, nil
+	return val, err
 }
 
 func (Decoder) loadSpec(structVal reflect.Value) (ukspec.Params, error) {
@@ -67,7 +61,7 @@ func (d Decoder) decodeFlag(structVal reflect.Value, spec ukspec.Params, flag uk
 		return decodeErr(structVal).flagName(flag)
 	}
 
-	fieldVal := d.fieldByIndex(structVal, flagSpec.FieldIndex)
+	fieldVal := ukreflect.LoadFieldByIndex(structVal, flagSpec.FieldIndex)
 
 	if err := decode(fieldVal, flag.Value); err != nil {
 		if errors.Is(err, errUnsupportedKind) {
@@ -88,7 +82,7 @@ func (d Decoder) decodeArgs(structVal reflect.Value, spec ukspec.Params, args []
 		return errors.New("[TODO decodeArgs] have args but not spec")
 	}
 
-	argsVal := d.fieldByIndex(structVal, spec.Args.FieldIndex)
+	argsVal := ukreflect.LoadFieldByIndex(structVal, spec.Args.FieldIndex)
 
 	for _, arg := range args {
 		if err := decode(argsVal, arg); err != nil {
@@ -97,26 +91,4 @@ func (d Decoder) decodeArgs(structVal reflect.Value, spec ukspec.Params, args []
 	}
 
 	return nil
-}
-
-// Re-implementation of `reflect.FieldByIndex`
-// This version does not panic or error when "stepping through a nil pointer"
-// Instead, it sets the pointer to a newly initialized element (zero) value
-func (Decoder) fieldByIndex(structVal reflect.Value, index []int) (fieldVal reflect.Value) {
-	fieldVal, index = structVal.Field(index[0]), index[1:]
-
-	for _, i := range index {
-		if fieldVal.Kind() == reflect.Pointer {
-			if fieldVal.IsZero() {
-				newVal := reflect.New(fieldVal.Type().Elem())
-				fieldVal.Set(newVal)
-			}
-
-			fieldVal = fieldVal.Elem()
-		}
-
-		fieldVal = fieldVal.Field(i)
-	}
-
-	return
 }
