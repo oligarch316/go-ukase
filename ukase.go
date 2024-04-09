@@ -4,85 +4,76 @@ import (
 	"context"
 
 	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukenc"
+	"github.com/oligarch316/go-ukase/ukreflect/ukenc"
+	"github.com/oligarch316/go-ukase/ukreflect/ukinit"
+	"github.com/oligarch316/go-ukase/ukspec"
 )
 
-// =============================================================================
-// Mux
-// =============================================================================
+var defaultConfig = Config{}
 
-func MustMux(opts ...func(*ukcore.MuxConfig)) *ukcore.Mux {
-	mux, err := NewMux(opts...)
-	if err != nil {
-		panic(err)
+type Option interface{ UkaseApply(*Config) }
+
+type Config struct {
+	Core []ukcore.Option
+	Spec []ukspec.Option
+}
+
+func newConfig(opts []Option) Config {
+	config := defaultConfig
+	for _, opt := range opts {
+		opt.UkaseApply(&config)
 	}
-
-	return mux
+	return config
 }
 
-func NewMux(opts ...func(*ukcore.MuxConfig)) (*ukcore.Mux, error) {
-	// TODO:
-	// Create a "help" command, set MuxConfig.DefaultCommand = <help>
-
-	return ukcore.NewMux(opts...)
+type Runtime struct {
+	config Config
+	mux    *ukcore.Mux
+	rules  ukinit.RuleSet
 }
 
-// =============================================================================
-// Command
-// =============================================================================
+func New(opts ...Option) *Runtime {
+	config := newConfig(opts)
 
-type Handler[Params any] func(context.Context, Params) error
-
-type Command[Params any] struct {
-	Handler  Handler[Params]
-	Defaults Params
+	return &Runtime{
+		config: config,
+		mux:    ukcore.New(config.Core...),
+		rules:  ukinit.New(),
+	}
 }
 
-func NewCommand[Params any](handler Handler[Params], overrides ...func(*Params)) Command[Params] {
-	defaults := initialize[Params](overrides...)
-	return Command[Params]{Handler: handler, Defaults: defaults}
+func (r *Runtime) Execute(ctx context.Context, values []string) error {
+	return r.mux.Execute(ctx, values)
 }
 
-func (c Command[Params]) Execute(ctx context.Context, input ukcore.Input) error {
-	// TODO:
-	// Do we need/want to worry about deep/shallow copy issues here?
-	// If so, 1st thought is to store opts in the Command struct, then do initialization here
-	// Removes the ability to do the following tho, so trying to avoid:
-	//   myCommand := NewCommand(myFunc)
-	//   myCommand.Defaults.ParamA = "abc"
-	//   myCommand.Defaults.ParamB = "xyz"
+func Default[Params any](runtime *Runtime, defaults ...func(*Params)) {
+	ukinit.Register(runtime.rules, defaults...)
+}
 
-	params := c.Defaults
-	decoder := ukenc.NewDecoder(input)
-
-	if err := decoder.Decode(&params); err != nil {
+func Command[Params any](runtime *Runtime, handler func(context.Context, Params) error, target ...string) error {
+	spec, err := ukspec.For[Params]()
+	if err != nil {
 		return err
 	}
 
-	return c.Handler(ctx, params)
+	cmd := command[Params]{runtime: runtime, handler: handler}
+	return runtime.mux.Register(cmd, spec, target...)
 }
 
-func (c Command[Params]) MustRegister(mux *ukcore.Mux, target ...string) {
-	if err := c.Register(mux, target...); err != nil {
-		panic(err)
-	}
+type command[Params any] struct {
+	runtime *Runtime
+	handler func(context.Context, Params) error
 }
 
-func (c Command[Params]) Register(mux *ukcore.Mux, target ...string) error {
-	return mux.Register(c, c.Defaults, target...)
-}
-
-func initialize[Params any](overrides ...func(*Params)) Params {
-	type Initializer interface{ InitUkaseParams() }
-
-	params := new(Params)
-	if initializer, ok := (any)(params).(Initializer); ok {
-		initializer.InitUkaseParams()
+func (c command[Params]) Execute(ctx context.Context, input ukcore.Input) error {
+	params, err := ukinit.Create[Params](c.runtime.rules)
+	if err != nil {
+		return err
 	}
 
-	for _, override := range overrides {
-		override(params)
+	if err := ukenc.NewDecoder(input).Decode(&params); err != nil {
+		return err
 	}
 
-	return *params
+	return c.handler(ctx, params)
 }
