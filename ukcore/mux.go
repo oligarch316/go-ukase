@@ -53,7 +53,7 @@ func (m *Mux) Register(exec Exec, spec ukspec.Params, target ...string) error {
 			node.children[childName] = child
 		}
 
-		node.copyFlags(spec.Flags)
+		child.copyFlags(spec.Flags)
 		node = child
 	}
 

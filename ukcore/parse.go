@@ -115,13 +115,15 @@ func (p *Parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]Flag, error) {
 		}
 
 		if nextToken.Kind == KindFlag {
-			flagSpec, ok := specs[nextToken.Value]
+			// Consume the flag-name
+			flagName, _ := nextToken.Value, p.consumeValue()
+
+			flagSpec, ok := specs[flagName]
 			if !ok {
 				return flags, errors.New("[TODO ConsumeFlags] got an unknown flag name")
 			}
 
-			// Consume the flag-name and flag-value
-			flagName := p.consumeValue()
+			// Consume the flag-value
 			flagVal, err := p.consumeFlagValue(flagSpec)
 			if err != nil {
 				return flags, err
