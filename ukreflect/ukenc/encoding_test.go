@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukenc"
+	"github.com/oligarch316/go-ukase/ukreflect/ukenc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
