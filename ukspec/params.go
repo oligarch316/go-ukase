@@ -25,13 +25,12 @@ type Params struct {
 	Inlines map[reflect.Type]Inline
 }
 
-func Load[T any](opts ...Option) (Params, error) {
-	var tmp [0]T
-	t := reflect.TypeOf(tmp).Elem()
+func For[T any](opts ...Option) (Params, error) {
+	t := reflect.TypeFor[T]()
 	return New(t, opts...)
 }
 
-func Parse(v any, opts ...Option) (Params, error) {
+func Of(v any, opts ...Option) (Params, error) {
 	t := reflect.TypeOf(v)
 	return New(t, opts...)
 }
