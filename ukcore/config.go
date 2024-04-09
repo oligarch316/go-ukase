@@ -30,7 +30,7 @@ type Config struct {
 }
 
 func newConfig(opts []Option) Config {
-	config := Config{}
+	config := defaultConfig
 	for _, opt := range opts {
 		opt.UkaseApplyCore(&config)
 	}
