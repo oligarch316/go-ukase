@@ -9,9 +9,17 @@ import (
 	"github.com/oligarch316/go-ukase/ukspec"
 )
 
-type Decoder struct{ input ukcore.Input }
+type Decoder struct {
+	config Config
+	input  ukcore.Input
+}
 
-func NewDecoder(input ukcore.Input) *Decoder { return &Decoder{input: input} }
+func NewDecoder(input ukcore.Input, opts ...Option) *Decoder {
+	return &Decoder{
+		config: newConfig(opts),
+		input:  input,
+	}
+}
 
 func (d *Decoder) Decode(params any) error {
 	val, err := d.loadValue(params)
@@ -43,11 +51,8 @@ func (Decoder) loadValue(v any) (reflect.Value, error) {
 	return val, err
 }
 
-func (Decoder) loadSpec(structVal reflect.Value) (ukspec.Params, error) {
-	// TODO
-	opts := []ukspec.Option{}
-
-	spec, err := ukspec.New(structVal.Type(), opts...)
+func (d Decoder) loadSpec(structVal reflect.Value) (ukspec.Params, error) {
+	spec, err := ukspec.New(structVal.Type(), d.config.Spec...)
 	if err != nil {
 		// TODO: Wrap error appropriately
 	}

@@ -9,13 +9,18 @@ import (
 	"github.com/oligarch316/go-ukase/ukspec"
 )
 
+// =============================================================================
+// Config
+// =============================================================================
+
 var defaultConfig = Config{}
 
 type Option interface{ UkaseApply(*Config) }
 
 type Config struct {
 	Core []ukcore.Option
-	Spec []ukspec.Option
+	Enc  []ukenc.Option
+	Init []ukinit.Option
 }
 
 func newConfig(opts []Option) Config {
@@ -26,31 +31,31 @@ func newConfig(opts []Option) Config {
 	return config
 }
 
+// =============================================================================
+// Runtime
+// =============================================================================
+
 type Runtime struct {
-	config Config
-	mux    *ukcore.Mux
-	rules  ukinit.RuleSet
+	config  Config
+	mux     *ukcore.Mux
+	ruleSet *ukinit.RuleSet
 }
 
 func New(opts ...Option) *Runtime {
 	config := newConfig(opts)
 
 	return &Runtime{
-		config: config,
-		mux:    ukcore.New(config.Core...),
-		rules:  ukinit.New(),
+		config:  config,
+		mux:     ukcore.New(config.Core...),
+		ruleSet: ukinit.New(config.Init...),
 	}
 }
 
-func (r *Runtime) Execute(ctx context.Context, values []string) error {
-	return r.mux.Execute(ctx, values)
+func Default[Params any](runtime *Runtime, rules ...func(*Params)) {
+	ukinit.Register(runtime.ruleSet, rules...)
 }
 
-func Default[Params any](runtime *Runtime, defaults ...func(*Params)) {
-	ukinit.Register(runtime.rules, defaults...)
-}
-
-func Command[Params any](runtime *Runtime, handler func(context.Context, Params) error, target ...string) error {
+func Command[Params any](runtime *Runtime, handler Handler[Params], target ...string) error {
 	spec, err := ukspec.For[Params]()
 	if err != nil {
 		return err
@@ -60,18 +65,29 @@ func Command[Params any](runtime *Runtime, handler func(context.Context, Params)
 	return runtime.mux.Register(cmd, spec, target...)
 }
 
+func (r *Runtime) Execute(ctx context.Context, values []string) error {
+	return r.mux.Execute(ctx, values)
+}
+
+// =============================================================================
+// Command
+// =============================================================================
+
+type Handler[Params any] func(context.Context, Params) error
+
 type command[Params any] struct {
 	runtime *Runtime
-	handler func(context.Context, Params) error
+	handler Handler[Params]
 }
 
 func (c command[Params]) Execute(ctx context.Context, input ukcore.Input) error {
-	params, err := ukinit.Create[Params](c.runtime.rules)
+	params, err := ukinit.Create[Params](c.runtime.ruleSet)
 	if err != nil {
 		return err
 	}
 
-	if err := ukenc.NewDecoder(input).Decode(&params); err != nil {
+	decoder := ukenc.NewDecoder(input, c.runtime.config.Enc...)
+	if err := decoder.Decode(&params); err != nil {
 		return err
 	}
 
