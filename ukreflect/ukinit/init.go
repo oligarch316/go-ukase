@@ -2,50 +2,49 @@ package ukinit
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/oligarch316/go-ukase/ukreflect"
 	"github.com/oligarch316/go-ukase/ukspec"
 )
 
-type rule interface{ apply(any) error }
+type Rule interface {
+	Register(*RuleSet)
+	apply(any) error
+}
 
-type ruleList[T any] []func(*T)
+func NewRule[T any](f func(*T)) Rule { return rule[T](f) }
 
-func (rl ruleList[T]) apply(v any) error {
-	if target, ok := v.(*T); ok {
-		for _, f := range rl {
-			f(target)
-		}
+type rule[T any] func(*T)
+
+func (r rule[T]) Register(ruleSet *RuleSet) {
+	t := reflect.TypeFor[T]()
+	ruleSet.rules[t] = append(ruleSet.rules[t], r)
+}
+
+func (r rule[T]) apply(v any) error {
+	if vt, ok := v.(*T); ok {
+		r(vt)
 		return nil
 	}
 
-	return errors.New("[TODO apply] <INTERNAL> v is not the correct type")
+	return fmt.Errorf("[TODO apply] <INTERNAL> v is not the correct type, expected: %T, actual: %T", new(T), v)
 }
 
 type RuleSet struct {
 	config Config
-	rules  map[reflect.Type]rule
+	rules  map[reflect.Type][]Rule
 }
 
-func New(opts ...Option) *RuleSet {
+func NewRuleSet(opts ...Option) *RuleSet {
 	return &RuleSet{
 		config: newConfig(opts),
-		rules:  make(map[reflect.Type]rule),
+		rules:  make(map[reflect.Type][]Rule),
 	}
 }
 
-func Register[T any](set *RuleSet, fs ...func(*T)) {
-	t := reflect.TypeFor[T]()
-
-	if x, exists := set.rules[t]; exists {
-		fs = append(x.(ruleList[T]), fs...)
-	}
-
-	set.rules[t] = ruleList[T](fs)
-}
-
-func Create[T any](set *RuleSet) (T, error) {
+func For[T any](set *RuleSet) (T, error) {
 	var target T
 
 	spec, err := ukspec.Of(target)
@@ -82,7 +81,7 @@ func (rs *RuleSet) processForced(v any, spec ukspec.Inline) error {
 
 	// TODO: Documentation comment
 	for _, fieldSpec := range spec.Inlines {
-		fieldVal, err := rs.loadField(val, fieldSpec.FieldIndex)
+		fieldVal, err := rs.loadInline(val, fieldSpec.FieldIndex)
 		if err != nil {
 			return err
 		}
@@ -111,7 +110,7 @@ func (rs *RuleSet) processUnforced(v any, spec ukspec.Inline, customComplete boo
 
 	// TODO: Documentation comment
 	for _, fieldSpec := range spec.Inlines {
-		fieldVal, err := rs.loadField(val, fieldSpec.FieldIndex)
+		fieldVal, err := rs.loadInline(val, fieldSpec.FieldIndex)
 		if err != nil {
 			return err
 		}
@@ -138,22 +137,39 @@ func (*RuleSet) processCustom(v any) bool {
 }
 
 func (rs *RuleSet) processRule(v any, spec ukspec.Inline) error {
-	if rule, ok := rs.rules[spec.Type]; ok {
-		return rule.apply(v)
+	rules, ok := rs.rules[spec.Type]
+	if !ok {
+		return nil
+	}
+
+	for _, rule := range rules {
+		if err := rule.apply(v); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (*RuleSet) loadField(val reflect.Value, index []int) (reflect.Value, error) {
+func (*RuleSet) loadInline(val reflect.Value, index []int) (reflect.Value, error) {
+	// TODO: Document
+	index = index[len(index)-1:]
+
 	fieldVal := ukreflect.LoadFieldByIndex(val, index)
 
+	// TODO: Document
 	if fieldVal.Kind() != reflect.Pointer {
 		if !fieldVal.CanAddr() {
 			return fieldVal, errors.New("[TODO loadField] <INTERNAL> CanAddr() is false for inline field")
 		}
 
 		fieldVal = fieldVal.Addr()
+	}
+
+	// TODO: Document
+	if fieldVal.IsZero() {
+		elemType := fieldVal.Type().Elem()
+		fieldVal.Set(reflect.New(elemType))
 	}
 
 	return fieldVal, nil
