@@ -36,8 +36,12 @@ func Of(v any, opts ...Option) (Params, error) {
 }
 
 func New(t reflect.Type, opts ...Option) (Params, error) {
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
 	if t.Kind() != reflect.Struct {
-		return Params{}, errors.New("[TODO New] not a struct")
+		return Params{}, errors.New("[TODO New] not a struct or struct pointer")
 	}
 
 	params := Params{

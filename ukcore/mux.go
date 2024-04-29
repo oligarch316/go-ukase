@@ -19,9 +19,7 @@ type Input struct {
 	Flags        []Flag
 }
 
-type Exec interface {
-	Execute(context.Context, Input) error
-}
+type Exec func(context.Context, Input) error
 
 // =============================================================================
 // Mux
@@ -110,10 +108,10 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 
 	// Exec
 	if node.exec != nil {
-		return node.exec.Execute(ctx, input)
+		return node.exec(ctx, input)
 	}
 
-	return m.config.ExecDefault.Execute(ctx, input)
+	return m.config.ExecDefault(ctx, input)
 }
 
 func (m *Mux) copyFlags(flags map[string]ukspec.Flag) error {
