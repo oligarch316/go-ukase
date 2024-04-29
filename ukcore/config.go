@@ -11,7 +11,7 @@ import (
 // =============================================================================
 
 var defaultConfig = Config{
-	ExecDefault:  new(execDefault),
+	ExecDefault:  execDefault,
 	FlagCheck:    FlagCheckElide,
 	MuxOverwrite: false,
 }
@@ -41,14 +41,8 @@ func newConfig(opts []Option) Config {
 // Exec Default
 // =============================================================================
 
-type execDefault []string
-
-func (ed execDefault) Error() string {
-	return fmt.Sprintf("unspecified target '%s'", strings.Join(ed, "."))
-}
-
-func (execDefault) Execute(_ context.Context, input Input) error {
-	return execDefault(input.Target)
+func execDefault(_ context.Context, input Input) error {
+	return fmt.Errorf("unspecified target '%s'", strings.Join(input.Target, " "))
 }
 
 // =============================================================================

@@ -44,36 +44,36 @@ func NewRuleSet(opts ...Option) *RuleSet {
 	}
 }
 
-func For[T any](set *RuleSet) (T, error) {
-	var target T
+func For[T any](ruleSet *RuleSet) (T, error) {
+	var data T
 
-	spec, err := ukspec.Of(target)
+	spec, err := ukspec.Of(data)
 	if err != nil {
-		return target, err
+		return data, err
 	}
 
+	return data, ruleSet.Process(spec, &data)
+}
+
+func (rs *RuleSet) Process(spec ukspec.Params, v any) error {
 	// TODO: This is kinda ugly
 	seed := ukspec.Inline{
 		Type:    spec.Type,
 		Inlines: spec.Inlines,
 	}
 
-	if err := set.process(&target, seed); err != nil {
-		return target, err
-	}
-
-	return target, nil
+	return rs.process(seed, v)
 }
 
-func (rs *RuleSet) process(v any, spec ukspec.Inline) error {
+func (rs *RuleSet) process(spec ukspec.Inline, v any) error {
 	if rs.config.ForceCustomInit {
-		return rs.processForced(v, spec)
+		return rs.processForced(spec, v)
 	}
 
-	return rs.processUnforced(v, spec, false)
+	return rs.processUnforced(spec, v, false)
 }
 
-func (rs *RuleSet) processForced(v any, spec ukspec.Inline) error {
+func (rs *RuleSet) processForced(spec ukspec.Inline, v any) error {
 	val, err := ukreflect.LoadValueOf(v)
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func (rs *RuleSet) processForced(v any, spec ukspec.Inline) error {
 			return err
 		}
 
-		err = rs.processForced(fieldVal.Interface(), fieldSpec)
+		err = rs.processForced(fieldSpec, fieldVal.Interface())
 		if err != nil {
 			return err
 		}
@@ -96,10 +96,10 @@ func (rs *RuleSet) processForced(v any, spec ukspec.Inline) error {
 	rs.processCustom(v)
 
 	// TODO: Documentation comment
-	return rs.processRule(v, spec)
+	return rs.processRule(spec, v)
 }
 
-func (rs *RuleSet) processUnforced(v any, spec ukspec.Inline, customComplete bool) error {
+func (rs *RuleSet) processUnforced(spec ukspec.Inline, v any, customComplete bool) error {
 	// TODO: Documentation comment
 	customComplete = customComplete || rs.processCustom(v)
 
@@ -115,14 +115,14 @@ func (rs *RuleSet) processUnforced(v any, spec ukspec.Inline, customComplete boo
 			return err
 		}
 
-		err = rs.processUnforced(fieldVal.Interface(), fieldSpec, customComplete)
+		err = rs.processUnforced(fieldSpec, fieldVal.Interface(), customComplete)
 		if err != nil {
 			return err
 		}
 	}
 
 	// TODO: Documentation comment
-	return rs.processRule(v, spec)
+	return rs.processRule(spec, v)
 }
 
 func (*RuleSet) processCustom(v any) bool {
@@ -136,7 +136,7 @@ func (*RuleSet) processCustom(v any) bool {
 	return false
 }
 
-func (rs *RuleSet) processRule(v any, spec ukspec.Inline) error {
+func (rs *RuleSet) processRule(spec ukspec.Inline, v any) error {
 	rules, ok := rs.rules[spec.Type]
 	if !ok {
 		return nil

@@ -17,6 +17,7 @@ func (o ElideBoolType) UkaseApplyInit(c *ukinit.Config) { c.Spec = append(c.Spec
 func (o ElideBoolType) UkaseApply(c *ukase.Config) {
 	c.Enc = append(c.Enc, o)
 	c.Init = append(c.Init, o)
+	c.Spec = append(c.Spec, o)
 }
 
 type ElideIsBoolFlag bool
@@ -27,6 +28,7 @@ func (o ElideIsBoolFlag) UkaseApplyInit(c *ukinit.Config) { c.Spec = append(c.Sp
 func (o ElideIsBoolFlag) UkaseApply(c *ukase.Config) {
 	c.Enc = append(c.Enc, o)
 	c.Init = append(c.Init, o)
+	c.Spec = append(c.Spec, o)
 }
 
 type ElideDefaultConsumable func(string) bool
@@ -37,6 +39,7 @@ func (o ElideDefaultConsumable) UkaseApplyInit(c *ukinit.Config) { c.Spec = appe
 func (o ElideDefaultConsumable) UkaseApply(c *ukase.Config) {
 	c.Enc = append(c.Enc, o)
 	c.Init = append(c.Init, o)
+	c.Spec = append(c.Spec, o)
 }
 
 func ElideDefaultConsumableSet(valid ...string) ElideDefaultConsumable {
