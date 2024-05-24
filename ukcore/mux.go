@@ -15,11 +15,23 @@ import (
 type Flag struct{ Name, Value string }
 
 type Input struct {
-	Target, Args []string
-	Flags        []Flag
+	Program string
+	Target  []string
+	Args    []string
+	Flags   []Flag
 }
 
+// =============================================================================
+// Data
+// =============================================================================
+
 type Exec func(context.Context, Input) error
+
+type Meta interface {
+	Info() (any, bool)
+	Spec() (ukspec.Params, bool)
+	Children() map[string]Meta
+}
 
 // =============================================================================
 // Mux
@@ -37,7 +49,7 @@ func New(opts ...Option) *Mux {
 	}
 }
 
-func (m *Mux) Register(exec Exec, spec ukspec.Params, target ...string) error {
+func (m *Mux) RegisterExec(exec Exec, spec ukspec.Params, target ...string) error {
 	if err := m.copyFlags(spec.Flags); err != nil {
 		return err
 	}
@@ -56,11 +68,48 @@ func (m *Mux) Register(exec Exec, spec ukspec.Params, target ...string) error {
 	}
 
 	if node.exec != nil && !m.config.MuxOverwrite {
-		return errors.New("[TODO Register] overwrite not allowed")
+		return fmt.Errorf("[TODO RegisterExec] overwrite not allowed on target %v", target)
 	}
 
-	node.exec = exec
+	node.exec, node.spec = exec, spec
 	return nil
+}
+
+func (m *Mux) RegisterInfo(info any, target ...string) error {
+	node := m.root
+
+	for _, childName := range target {
+		child, ok := node.children[childName]
+		if !ok {
+			child = newMuxNode()
+			node.children[childName] = child
+		}
+
+		node = child
+	}
+
+	// TODO: Separate config setting for this?
+	if node.info != nil && !m.config.MuxOverwrite {
+		return fmt.Errorf("[TODO RegisterInfo] overwrite not allowed on target %v", target)
+	}
+
+	node.info = info
+	return nil
+}
+
+func (m *Mux) Lookup(target ...string) (Meta, error) {
+	node := m.root
+
+	for _, childName := range target {
+		child, ok := node.children[childName]
+		if !ok {
+			return nil, fmt.Errorf("[TODO Lookup] go an unknown name: %s", childName)
+		}
+
+		node = child
+	}
+
+	return node, nil
 }
 
 func (m *Mux) Execute(ctx context.Context, values []string) error {
@@ -70,7 +119,7 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 
 	// Set up
 	programName, parser := values[0], Parser(values[1:])
-	input := Input{Target: []string{programName}}
+	input := Input{Program: programName}
 	node := m.root
 
 	for {
@@ -145,7 +194,10 @@ func (m *Mux) copyFlags(flags map[string]ukspec.Flag) error {
 // =============================================================================
 
 type muxNode struct {
-	exec     Exec
+	exec Exec
+	spec ukspec.Params
+	info any
+
 	flags    map[string]ukspec.Flag
 	children map[string]*muxNode
 }
@@ -155,6 +207,19 @@ func newMuxNode() *muxNode {
 		flags:    make(map[string]ukspec.Flag),
 		children: make(map[string]*muxNode),
 	}
+}
+
+func (mn *muxNode) Info() (any, bool)           { return mn.info, mn.info != nil }
+func (mn *muxNode) Spec() (ukspec.Params, bool) { return mn.spec, mn.spec.Type != nil }
+
+func (mn *muxNode) Children() map[string]Meta {
+	res := make(map[string]Meta)
+
+	for childName, child := range mn.children {
+		res[childName] = child
+	}
+
+	return res
 }
 
 func (mn *muxNode) copyFlags(flags map[string]ukspec.Flag) {

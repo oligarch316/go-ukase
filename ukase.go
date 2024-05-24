@@ -19,10 +19,20 @@ var defaultConfig = Config{}
 type Option interface{ UkaseApply(*Config) }
 
 type Config struct {
+	// TODO: Document
 	Core []ukcore.Option
-	Enc  []ukenc.Option
+
+	// TODO: Document
+	Enc []ukenc.Option
+
+	// TODO: Document
 	Init []ukinit.Option
+
+	// TODO: Document
 	Spec []ukspec.Option
+
+	// TODO: Document
+	Middleware []func(State) State
 }
 
 func newConfig(opts []Option) Config {
@@ -51,60 +61,22 @@ func (r *Runtime) Add(directives ...Directive) {
 }
 
 func (r *Runtime) Execute(ctx context.Context, values []string) error {
-	state := state{
-		config:  r.config,
-		mux:     ukcore.New(r.config.Core...),
-		ruleSet: ukinit.NewRuleSet(r.config.Init...),
-	}
+	state := newState(r.config)
 
-	for _, directive := range r.directives {
-		if err := directive.UkaseRegister(&state); err != nil {
-			return err
-		}
+	if err := r.prepare(state); err != nil {
+		return err
 	}
 
 	return state.mux.Execute(ctx, values)
 }
 
-// =============================================================================
-// Scope
-// =============================================================================
+func (r *Runtime) prepare(state State) error {
+	for _, middleware := range r.config.Middleware {
+		state = middleware(state)
+	}
 
-type scopedState struct {
-	State
-	target []string
-}
-
-func (ss scopedState) registerRule(rule ukinit.Rule) {
-	// TODO: Sequester rules added to a scope to that scope and it's children?
-
-	ss.State.registerRule(rule)
-}
-
-func (ss scopedState) registerExec(exec ukcore.Exec, spec ukspec.Params, target []string) error {
-	target = append(ss.target, target...)
-	return ss.State.registerExec(exec, spec, target)
-}
-
-type Scope struct {
-	target     []string
-	directives []Directive
-}
-
-func NewScope(target ...string) *Scope {
-	return &Scope{target: target}
-}
-
-func (s *Scope) Add(directives ...Directive) *Scope {
-	s.directives = append(s.directives, directives...)
-	return s
-}
-
-func (s *Scope) UkaseRegister(state State) error {
-	childState := scopedState{State: state, target: s.target}
-
-	for _, directive := range s.directives {
-		if err := directive.UkaseRegister(childState); err != nil {
+	for _, directive := range r.directives {
+		if err := directive.UkaseRegister(state); err != nil {
 			return err
 		}
 	}
@@ -123,37 +95,40 @@ func NewRule[Params any](rule func(*Params)) Rule[Params] {
 }
 
 func (r Rule[Params]) UkaseRegister(state State) error {
-	state.registerRule(ukinit.NewRule(r))
+	state.RegisterRule(ukinit.NewRule(r))
 	return nil
+}
+
+// =============================================================================
+// Info
+// =============================================================================
+
+type Info struct{ Value any }
+
+func NewInfo(info any) Info {
+	return Info{Value: info}
+}
+
+func (i Info) Bind(target ...string) Directive {
+	df := func(state State) error { return state.RegisterInfo(i.Value, target) }
+	return DirectiveFunc(df)
 }
 
 // =============================================================================
 // Exec
 // =============================================================================
 
-type Input struct {
-	ukcore.Input
-	state State
-}
-
-func (i Input) Initialize(v any) error { return i.state.execInit(v) }
-func (i Input) Decode(v any) error     { return i.state.execDecode(i.Input, v) }
-
 type Exec[Params any] func(context.Context, Input) error
 
-func NewExec[Params any](exec func(context.Context, Input) error) Exec[Params] {
-	return Exec[Params](exec)
-}
-
-func (e Exec[Params]) Command(target ...string) Directive {
-	d := func(state State) error { return e.register(state, target) }
-	return directive(d)
+func (e Exec[Params]) Bind(target ...string) Directive {
+	df := func(state State) error { return e.register(state, target) }
+	return DirectiveFunc(df)
 }
 
 func (e Exec[Params]) register(state State, target []string) error {
 	t := reflect.TypeFor[Params]()
 
-	spec, err := state.execSpec(t)
+	spec, err := state.loadSpec(t)
 	if err != nil {
 		return err
 	}
@@ -163,7 +138,7 @@ func (e Exec[Params]) register(state State, target []string) error {
 		return e(ctx, input)
 	}
 
-	return state.registerExec(exec, spec, target)
+	return state.RegisterExec(exec, spec, target)
 }
 
 // =============================================================================
@@ -176,9 +151,9 @@ func NewHandler[Params any](handler func(context.Context, Params) error) Handler
 	return Handler[Params](handler)
 }
 
-func (h Handler[Params]) Command(target ...string) Directive {
-	var exec Exec[Params] = h.exec
-	return exec.Command(target...)
+func (h Handler[Params]) Bind(target ...string) Directive {
+	exec := Exec[Params](h.exec)
+	return exec.Bind(target...)
 }
 
 func (h Handler[Params]) exec(ctx context.Context, input Input) error {
