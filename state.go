@@ -17,23 +17,24 @@ type Directive interface {
 	UkaseRegister(State) error
 }
 
-type directive func(State) error
+type DirectiveFunc func(State) error
 
-func (d directive) UkaseRegister(state State) error { return d(state) }
+func (df DirectiveFunc) UkaseRegister(state State) error { return df(state) }
 
 // =============================================================================
 // State
 // =============================================================================
 
 type State interface {
-	// TODO: Probably want all of these methods exported/accessible
+	decode(ukcore.Input, any) error
+	initialize(any) error
 
-	execSpec(reflect.Type) (ukspec.Params, error)
-	execInit(any) error
-	execDecode(ukcore.Input, any) error
+	loadMeta(target []string) (ukcore.Meta, error)
+	loadSpec(t reflect.Type) (ukspec.Params, error)
 
-	registerRule(ukinit.Rule)
-	registerExec(ukcore.Exec, ukspec.Params, []string) error
+	RegisterExec(exec ukcore.Exec, spec ukspec.Params, target []string) error
+	RegisterInfo(info any, target []string) error
+	RegisterRule(rule ukinit.Rule)
 }
 
 type state struct {
@@ -42,11 +43,20 @@ type state struct {
 	ruleSet *ukinit.RuleSet
 }
 
-func (s *state) execSpec(t reflect.Type) (ukspec.Params, error) {
-	return ukspec.New(t, s.config.Spec...)
+func newState(config Config) *state {
+	return &state{
+		config:  config,
+		mux:     ukcore.New(config.Core...),
+		ruleSet: ukinit.NewRuleSet(config.Init...),
+	}
 }
 
-func (s *state) execInit(v any) error {
+func (s *state) decode(input ukcore.Input, v any) error {
+	decoder := ukenc.NewDecoder(input, s.config.Enc...)
+	return decoder.Decode(v)
+}
+
+func (s *state) initialize(v any) error {
 	spec, err := ukspec.Of(v, s.config.Spec...)
 	if err != nil {
 		return err
@@ -55,13 +65,35 @@ func (s *state) execInit(v any) error {
 	return s.ruleSet.Process(spec, v)
 }
 
-func (s *state) execDecode(input ukcore.Input, v any) error {
-	decoder := ukenc.NewDecoder(input, s.config.Enc...)
-	return decoder.Decode(v)
+func (s *state) loadMeta(target []string) (ukcore.Meta, error) {
+	return s.mux.Lookup(target...)
 }
 
-func (s *state) registerRule(rule ukinit.Rule) { rule.Register(s.ruleSet) }
-
-func (s *state) registerExec(exec ukcore.Exec, spec ukspec.Params, target []string) error {
-	return s.mux.Register(exec, spec, target...)
+func (s *state) loadSpec(t reflect.Type) (ukspec.Params, error) {
+	return ukspec.New(t, s.config.Spec...)
 }
+
+func (s *state) RegisterExec(exec ukcore.Exec, spec ukspec.Params, target []string) error {
+	return s.mux.RegisterExec(exec, spec, target...)
+}
+
+func (s *state) RegisterInfo(info any, target []string) error {
+	return s.mux.RegisterInfo(info, target...)
+}
+
+func (s *state) RegisterRule(rule ukinit.Rule) {
+	rule.Register(s.ruleSet)
+}
+
+// =============================================================================
+// Input
+// =============================================================================
+
+type Input struct {
+	ukcore.Input
+	state State
+}
+
+func (i Input) Decode(v any) error                        { return i.state.decode(i.Input, v) }
+func (i Input) Initialize(v any) error                    { return i.state.initialize(v) }
+func (i Input) Meta(target []string) (ukcore.Meta, error) { return i.state.loadMeta(target) }

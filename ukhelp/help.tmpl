@@ -1,0 +1,13 @@
+Info:
+    {{ printf "%+v" .info }}
+
+Subcommands:
+{{- range $name, $info := .subcommands }}
+    {{ printf "%+v | %+v" $name $info }}
+{{- end }}
+
+Parameters:
+    {{ printf "%+v" .parameters }}
+
+Defaults:
+    {{ printf "%+v" .defaults }}
