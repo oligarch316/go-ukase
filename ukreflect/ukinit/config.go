@@ -3,7 +3,8 @@ package ukinit
 import "github.com/oligarch316/go-ukase/ukspec"
 
 var defaultConfig = Config{
-	ForceCustomInit: true,
+	// TODO
+	// Event: func(any) {},
 }
 
 type Option interface{ UkaseApplyInit(*Config) }
@@ -12,8 +13,8 @@ type Config struct {
 	// TODO: Document
 	Spec []ukspec.Option
 
-	// TODO: Document
-	ForceCustomInit bool
+	// TODO
+	// Event func(any)
 }
 
 func newConfig(opts []Option) Config {

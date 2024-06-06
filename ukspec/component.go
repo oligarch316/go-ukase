@@ -2,6 +2,7 @@ package ukspec
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"unicode/utf8"
 )
@@ -38,7 +39,6 @@ type Inline struct {
 	Type       reflect.Type
 	FieldName  string
 	FieldIndex []int
-	Inlines    map[reflect.Type]Inline
 }
 
 func newInline(field reflect.StructField, index []int) (Inline, error) {
@@ -59,7 +59,6 @@ func newInline(field reflect.StructField, index []int) (Inline, error) {
 		Type:       fieldType,
 		FieldName:  field.Name,
 		FieldIndex: index,
-		Inlines:    make(map[reflect.Type]Inline),
 	}
 
 	return inline, nil
@@ -72,30 +71,32 @@ func newInline(field reflect.StructField, index []int) (Inline, error) {
 type Flag struct {
 	Type       reflect.Type
 	Elide      Elide
-	FlagName   string
 	FieldName  string
 	FieldIndex []int
+	FlagNames  []string
 }
 
-func newFlag(config Config, field reflect.StructField, name string, index []int) (Flag, error) {
+func newFlag(config Config, field reflect.StructField, names []string, index []int) (Flag, error) {
 	if !field.IsExported() {
 		return Flag{}, errors.New("[TODO newFlag] not exported")
 	}
 
-	switch r, _ := utf8.DecodeRuneInString(name); r {
-	case utf8.RuneError:
-		return Flag{}, errors.New("[TODO newFlag] name gave utf8.RuneError")
-	case '-':
-		return Flag{}, errors.New("[TODO newFlag] name begins with '-'")
+	for _, name := range names {
+		switch r, _ := utf8.DecodeRuneInString(name); r {
+		case utf8.RuneError:
+			return Flag{}, fmt.Errorf("[TODO newFlag] flag name '%s' gave utf8.RuneError", name)
+		case '-':
+			return Flag{}, fmt.Errorf("[TODO newFlag] flag name '%s' beings with '-'", name)
+		}
 	}
 
 	elide := newElide(config, field)
 	flag := Flag{
 		Type:       field.Type,
 		Elide:      elide,
-		FlagName:   name,
 		FieldName:  field.Name,
 		FieldIndex: index,
+		FlagNames:  names,
 	}
 
 	return flag, nil

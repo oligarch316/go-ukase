@@ -2,6 +2,7 @@ package ukspec
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -18,11 +19,15 @@ const (
 	tagDirectiveInline = "inline"
 )
 
+var Empty, _ = For[struct{}]()
+
 type Params struct {
 	Type    reflect.Type
 	Args    *Args
-	Flags   map[string]Flag
-	Inlines map[reflect.Type]Inline
+	Flags   []Flag
+	Inlines []Inline
+
+	FlagIndex map[string]Flag
 }
 
 func For[T any](opts ...Option) (Params, error) {
@@ -45,15 +50,14 @@ func New(t reflect.Type, opts ...Option) (Params, error) {
 	}
 
 	params := Params{
-		Type:    t,
-		Args:    nil,
-		Flags:   make(map[string]Flag),
-		Inlines: make(map[reflect.Type]Inline),
+		Type:      t,
+		Args:      nil,
+		Flags:     nil,
+		Inlines:   nil,
+		FlagIndex: make(map[string]Flag),
 	}
 
-	config := newConfig(opts)
-	seed := Inline{Type: params.Type, Inlines: params.Inlines}
-	state := newState(config, seed)
+	state := newState(t, opts)
 
 	for state.shift() {
 		if err := params.load(state); err != nil {
@@ -65,9 +69,9 @@ func New(t reflect.Type, opts ...Option) (Params, error) {
 }
 
 func (p *Params) load(state *state) error {
-	for i := 0; i < state.Current.Type.NumField(); i++ {
-		field := state.Current.Type.Field(i)
-		index := append(state.Current.FieldIndex, i)
+	for i := 0; i < state.Head.Type.NumField(); i++ {
+		field := state.Head.Type.Field(i)
+		index := append(state.Head.Index, i)
 
 		if err := p.loadField(state, field, index); err != nil {
 			return err
@@ -92,19 +96,20 @@ func (p *Params) loadField(state *state, field reflect.StructField, index []int)
 func (p *Params) loadFieldFlag(state *state, field reflect.StructField, tag string, index []int) error {
 	names := strings.Fields(tag)
 
-	for _, name := range names {
-		flag, err := newFlag(state.Config, field, name, index)
-		if err != nil {
-			return err
-		}
-
-		if _, exists := p.Flags[name]; exists {
-			return errors.New("[TODO loadFieldFlag] flag conflict")
-		}
-
-		p.Flags[name] = flag
+	flag, err := newFlag(state.Config, field, names, index)
+	if err != nil {
+		return err
 	}
 
+	for _, name := range names {
+		if _, exists := p.FlagIndex[name]; exists {
+			return fmt.Errorf("[TODO loadFieldFlag] flag conflict on name '%s'", name)
+		}
+
+		p.FlagIndex[name] = flag
+	}
+
+	p.Flags = append(p.Flags, flag)
 	return nil
 }
 
@@ -146,6 +151,7 @@ func (p *Params) loadFieldInline(state *state, field reflect.StructField, index 
 		return err
 	}
 
+	p.Inlines = append(p.Inlines, inline)
 	return state.push(inline)
 }
 
@@ -153,38 +159,51 @@ func (p *Params) loadFieldInline(state *state, field reflect.StructField, index 
 // State
 // =============================================================================
 
-type state struct {
-	Config  Config
-	Current Inline
-
-	queue []Inline
-	seen  map[reflect.Type]struct{}
+type queueItem struct {
+	Tier  int
+	Type  reflect.Type
+	Index []int
 }
 
-func newState(config Config, seed Inline) *state {
+type state struct {
+	Config Config
+	Seen   map[reflect.Type]int
+
+	Head queueItem
+	Tail []queueItem
+}
+
+func newState(t reflect.Type, opts []Option) *state {
+	item := queueItem{Tier: 0, Type: t}
+
 	return &state{
-		Config: config,
-		queue:  []Inline{seed},
-		seen:   make(map[reflect.Type]struct{}),
+		Config: newConfig(opts),
+		Seen:   make(map[reflect.Type]int),
+		Tail:   []queueItem{item},
 	}
 }
 
 func (s *state) shift() bool {
-	if len(s.queue) == 0 {
+	if len(s.Tail) == 0 {
 		return false
 	}
 
-	s.Current, s.queue = s.queue[0], s.queue[1:]
-	s.seen[s.Current.Type] = struct{}{}
+	s.Seen[s.Head.Type] = s.Head.Tier
+	s.Head, s.Tail = s.Tail[0], s.Tail[1:]
 	return true
 }
 
 func (s *state) push(inline Inline) error {
-	if _, exists := s.seen[inline.Type]; exists {
-		return errors.New("[TODO push] already seen")
+	item := queueItem{
+		Tier:  s.Head.Tier + 1,
+		Type:  inline.Type,
+		Index: inline.FieldIndex,
 	}
 
-	s.Current.Inlines[inline.Type] = inline
-	s.queue = append(s.queue, inline)
+	if seenTier, ok := s.Seen[item.Type]; ok && seenTier < item.Tier {
+		return fmt.Errorf("[TODO push] inline type '%s' already seen (cycle)", item.Type)
+	}
+
+	s.Tail = append(s.Tail, item)
 	return nil
 }

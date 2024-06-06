@@ -102,7 +102,7 @@ func decodePointer(dst reflect.Value, src string) error {
 // Custom
 // =============================================================================
 
-var typeTextUnmarshaler = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+var typeTextUnmarshaler = reflect.TypeFor[encoding.TextUnmarshaler]()
 
 func decodeCustom(dst reflect.Value, src string) (bool, error) {
 	if unmarshaler, ok := loadTextUnmarshaler(dst); ok {
