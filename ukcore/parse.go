@@ -11,73 +11,73 @@ import (
 // Token
 // =============================================================================
 
-type TokenKind int
+type kind int
 
 const (
-	KindInvalid TokenKind = iota
-	KindEOF
-	KindEmpty
-	KindDelim
-	KindFlag
-	KindString
+	kindInvalid kind = iota
+	kindEOF
+	kindEmpty
+	kindDelim
+	kindFlag
+	kindString
 )
 
-var tokenKindToString = map[TokenKind]string{
-	KindInvalid: "INVALID",
-	KindEOF:     "EOF",
-	KindEmpty:   "EMPTY",
-	KindDelim:   "DELIM",
-	KindFlag:    "FLAG",
-	KindString:  "STRING",
+var kindToString = map[kind]string{
+	kindInvalid: "INVALID",
+	kindEOF:     "EOF",
+	kindEmpty:   "EMPTY",
+	kindDelim:   "DELIM",
+	kindFlag:    "FLAG",
+	kindString:  "STRING",
 }
 
-func (tk TokenKind) String() string {
-	if str, ok := tokenKindToString[tk]; ok {
+func (k kind) String() string {
+	if str, ok := kindToString[k]; ok {
 		return str
 	}
-	return fmt.Sprintf("UNKNOWN(%d)", tk)
+	return fmt.Sprintf("UNKNOWN(%d)", k)
 }
 
-type Token struct {
-	Kind  TokenKind
+type token struct {
+	Kind  kind
 	Value string
 }
 
-func (t Token) String() string { return fmt.Sprintf("<%s>%s", t.Kind, t.Value) }
+func (t token) String() string { return fmt.Sprintf("<%s>%s", t.Kind, t.Value) }
 
-func newToken(str string) Token {
+func newToken(str string) token {
 	rs := []rune(str)
 
 	switch n := len(rs); {
 	case n == 0:
 		// ❬1 Empty❭ ""
-		return Token{Kind: KindEmpty}
+		return token{Kind: kindEmpty}
 	case n == 1:
 		// ❬2 Rune❭ "x" | "-"
-		return Token{Kind: KindString, Value: str}
+		return token{Kind: kindString, Value: str}
 	case rs[0] != '-':
 		// ❬3 String❭ "xx…"
 		// • ❬1,2❭ ⇒ n > 1
-		return Token{Kind: KindString, Value: str}
+		return token{Kind: kindString, Value: str}
 	case n == 2 && rs[1] == '-':
 		// ❬4 Delim❭ "--"
 		// • ❬3❭ ⇒ rs[0] == '-'
-		return Token{Kind: KindDelim, Value: str}
+		return token{Kind: kindDelim, Value: str}
 	case n == 2:
 		// ❬5 Short Flag❭ "-x"
 		// • ❬3❭ ⇒ rs[0] == '-'
 		// • ❬4❭ ⇒ rs[1] != '-'
-		return Token{Kind: KindFlag, Value: string(rs[1])}
+		return token{Kind: kindFlag, Value: string(rs[1])}
 	case n > 3 && rs[1] == '-':
 		// ❬6 Long Flag❭ --xx…
 		// • ❬3❭ ⇒ rs[0] == '-'
-		return Token{Kind: KindFlag, Value: string(rs[2:])}
+		return token{Kind: kindFlag, Value: string(rs[2:])}
 	default:
 		// ❬7 Invalid❭ --x | -xx…
 		// • ❬1,2,5❭ ⇒ n > 2
 		// • ❬3❭     ⇒ rs[0] == '-'
 		// • ❬6❭     ⇒ str != "--xx…"
-		return Token{Kind: KindInvalid}
+		return token{Kind: kindInvalid}
 	}
 }
 
@@ -85,36 +85,34 @@ func newToken(str string) Token {
 // Parser
 // =============================================================================
 
-type Parser []string
+type parser []string
 
-func (p Parser) Flush() []string { return p }
-
-func (p *Parser) ConsumeToken() Token {
+func (p *parser) ConsumeToken() token {
 	if len(*p) == 0 {
-		return Token{Kind: KindEOF}
+		return token{Kind: kindEOF}
 	}
 
 	val := p.consumeValue()
 	return newToken(val)
 }
 
-func (p *Parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]Flag, error) {
+func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]Flag, error) {
 	var flags []Flag
 
 	for len(*p) > 0 {
 		nextToken := newToken((*p)[0])
 
-		if nextToken.Kind == KindDelim || nextToken.Kind == KindString {
+		if nextToken.Kind == kindDelim || nextToken.Kind == kindString {
 			return flags, nil
 		}
 
-		if nextToken.Kind == KindEmpty {
+		if nextToken.Kind == kindEmpty {
 			// Consume empty token
 			_ = p.consumeValue()
 			continue
 		}
 
-		if nextToken.Kind == KindFlag {
+		if nextToken.Kind == kindFlag {
 			// Consume the flag-name
 			flagName, _ := nextToken.Value, p.consumeValue()
 
@@ -139,7 +137,7 @@ func (p *Parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]Flag, error) {
 	return flags, nil
 }
 
-func (p *Parser) consumeFlagValue(spec ukspec.Flag) (string, error) {
+func (p *parser) consumeFlagValue(spec ukspec.Flag) (string, error) {
 	peekEmpty := len(*p) == 0
 	peekValid := !peekEmpty && spec.Elide.Consumable((*p)[0])
 
@@ -160,7 +158,7 @@ func (p *Parser) consumeFlagValue(spec ukspec.Flag) (string, error) {
 	return p.consumeValue(), nil
 }
 
-func (p *Parser) consumeValue() (val string) {
+func (p *parser) consumeValue() (val string) {
 	val, *p = (*p)[0], (*p)[1:]
 	return
 }

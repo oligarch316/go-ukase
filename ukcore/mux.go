@@ -118,7 +118,7 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 	}
 
 	// Set up
-	programName, parser := values[0], Parser(values[1:])
+	programName, parser := values[0], parser(values[1:])
 	input := Input{Program: programName}
 	node := m.root
 
@@ -134,11 +134,11 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 		// Subcommands
 		token := parser.ConsumeToken()
 
-		if token.Kind == KindDelim || token.Kind == KindEOF {
+		if token.Kind == kindDelim || token.Kind == kindEOF {
 			break
 		}
 
-		if token.Kind != KindString {
+		if token.Kind != kindString {
 			return fmt.Errorf("[TODO Execute] <INTERNAL> got an unexpected token kind (%s)", token.Kind)
 		}
 
@@ -153,7 +153,7 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 	}
 
 	// Args
-	input.Args = append(input.Args, parser.Flush()...)
+	input.Args = append(input.Args, parser...)
 
 	// Exec
 	if node.exec != nil {
