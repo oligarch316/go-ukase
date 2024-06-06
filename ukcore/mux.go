@@ -28,8 +28,8 @@ type Input struct {
 type Exec func(context.Context, Input) error
 
 type Meta interface {
-	Info() (any, bool)
-	Spec() (ukspec.Params, bool)
+	Info() any
+	Spec() ukspec.Params
 	Children() map[string]Meta
 }
 
@@ -50,7 +50,7 @@ func New(opts ...Option) *Mux {
 }
 
 func (m *Mux) RegisterExec(exec Exec, spec ukspec.Params, target ...string) error {
-	if err := m.copyFlags(spec.Flags); err != nil {
+	if err := m.copyFlags(spec.FlagIndex); err != nil {
 		return err
 	}
 
@@ -63,7 +63,7 @@ func (m *Mux) RegisterExec(exec Exec, spec ukspec.Params, target ...string) erro
 			node.children[childName] = child
 		}
 
-		child.copyFlags(spec.Flags)
+		child.copyFlags(spec.FlagIndex)
 		node = child
 	}
 
@@ -209,8 +209,15 @@ func newMuxNode() *muxNode {
 	}
 }
 
-func (mn *muxNode) Info() (any, bool)           { return mn.info, mn.info != nil }
-func (mn *muxNode) Spec() (ukspec.Params, bool) { return mn.spec, mn.spec.Type != nil }
+func (mn *muxNode) Info() any { return mn.info }
+
+func (mn *muxNode) Spec() ukspec.Params {
+	if mn.spec.Type != nil {
+		return mn.spec
+	}
+
+	return ukspec.Empty
+}
 
 func (mn *muxNode) Children() map[string]Meta {
 	res := make(map[string]Meta)

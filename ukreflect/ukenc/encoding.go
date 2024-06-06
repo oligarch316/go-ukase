@@ -61,7 +61,7 @@ func (d Decoder) loadSpec(structVal reflect.Value) (ukspec.Params, error) {
 }
 
 func (d Decoder) decodeFlag(structVal reflect.Value, spec ukspec.Params, flag ukcore.Flag) error {
-	flagSpec, ok := spec.Flags[flag.Name]
+	flagSpec, ok := spec.FlagIndex[flag.Name]
 	if !ok {
 		return decodeErr(structVal).flagName(flag)
 	}
