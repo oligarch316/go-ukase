@@ -60,7 +60,7 @@ func (d Decoder) loadSpec(structVal reflect.Value) (ukspec.Params, error) {
 	return spec, err
 }
 
-func (d Decoder) decodeFlag(structVal reflect.Value, spec ukspec.Params, flag ukcore.Flag) error {
+func (d Decoder) decodeFlag(structVal reflect.Value, spec ukspec.Params, flag ukcore.InputFlag) error {
 	flagSpec, ok := spec.FlagIndex[flag.Name]
 	if !ok {
 		return decodeErr(structVal).flagName(flag)

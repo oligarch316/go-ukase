@@ -66,7 +66,7 @@ func (s *state) initialize(v any) error {
 }
 
 func (s *state) loadMeta(target []string) (ukcore.Meta, error) {
-	return s.mux.Lookup(target...)
+	return s.mux.Meta(target...)
 }
 
 func (s *state) loadSpec(t reflect.Type) (ukspec.Params, error) {
