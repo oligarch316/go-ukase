@@ -57,10 +57,10 @@ func (edft ErrorDecodeField) Error() string {
 
 type ErrorDecodeFlagName struct {
 	errorDecode
-	Flag ukcore.Flag
+	Flag ukcore.InputFlag
 }
 
-func (ed errorDecode) flagName(flag ukcore.Flag) ErrorDecodeFlagName {
+func (ed errorDecode) flagName(flag ukcore.InputFlag) ErrorDecodeFlagName {
 	return ErrorDecodeFlagName{errorDecode: ed, Flag: flag}
 }
 
@@ -70,11 +70,11 @@ func (edfn ErrorDecodeFlagName) Error() string {
 
 type ErrorDecodeFlagValue struct {
 	errorDecode
-	Flag ukcore.Flag
+	Flag ukcore.InputFlag
 	err  error
 }
 
-func (ed errorDecode) flagValue(flag ukcore.Flag, err error) ErrorDecodeFlagValue {
+func (ed errorDecode) flagValue(flag ukcore.InputFlag, err error) ErrorDecodeFlagValue {
 	return ErrorDecodeFlagValue{errorDecode: ed, err: err, Flag: flag}
 }
 

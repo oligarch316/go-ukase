@@ -2,35 +2,35 @@ package ukcore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/oligarch316/go-ukase/ukspec"
 )
 
 // =============================================================================
 // Config
 // =============================================================================
 
-var defaultConfig = Config{
-	ExecDefault:  execDefault,
-	FlagCheck:    FlagCheckElide,
-	MuxOverwrite: false,
-}
-
 type Option interface{ UkaseApplyCore(*Config) }
 
 type Config struct {
 	// TODO: Document
-	ExecDefault Exec
+	ExecUnspecified Exec
 
 	// TODO: Document
-	FlagCheck FlagCheckLevel
+	ExecConflict func(original, update ukspec.Params) (overwrite bool, err error)
 
 	// TODO: Document
-	MuxOverwrite bool
+	InfoConflict func(original, update any) (overwrite bool, err error)
+
+	// TODO: Document
+	FlagConflict func(original, update ukspec.Flag) error
 }
 
 func newConfig(opts []Option) Config {
-	config := defaultConfig
+	config := cfgDefault
 	for _, opt := range opts {
 		opt.UkaseApplyCore(&config)
 	}
@@ -38,34 +38,32 @@ func newConfig(opts []Option) Config {
 }
 
 // =============================================================================
-// Exec Default
+// Defaults
 // =============================================================================
 
-func execDefault(_ context.Context, input Input) error {
-	return fmt.Errorf("unspecified target '%s'", strings.Join(input.Target, " "))
+var cfgDefault = Config{
+	ExecUnspecified: cfgExecUnspecified,
+	ExecConflict:    cfgExecConflict,
+	InfoConflict:    cfgInfoConflict,
+	FlagConflict:    cfgFlagConflict,
 }
 
-// =============================================================================
-// Flag Check Level
-// =============================================================================
-
-type FlagCheckLevel int
-
-const (
-	FlagCheckNone FlagCheckLevel = iota
-	FlagCheckElide
-	FlagCheckType
-)
-
-var flagCheckLevelToString = map[FlagCheckLevel]string{
-	FlagCheckNone:  "none",
-	FlagCheckElide: "elide",
-	FlagCheckType:  "type",
+func cfgExecUnspecified(_ context.Context, i Input) error {
+	return fmt.Errorf("unspecified target '%s'", strings.Join(i.Target, " "))
 }
 
-func (fcl FlagCheckLevel) String() string {
-	if str, ok := flagCheckLevelToString[fcl]; ok {
-		return str
+func cfgExecConflict(_, _ ukspec.Params) (bool, error) {
+	return false, errors.New("exec already exists")
+}
+
+func cfgInfoConflict(_, _ any) (bool, error) {
+	return false, errors.New("info already exists")
+}
+
+func cfgFlagConflict(o, u ukspec.Flag) error {
+	if o.Elide.Allow != u.Elide.Allow {
+		return fmt.Errorf("incompatible elide behavior '%t' and '%t'", o.Elide.Allow, u.Elide.Allow)
 	}
-	return fmt.Sprintf("unknown(%d)", fcl)
+
+	return nil
 }

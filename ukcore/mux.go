@@ -8,35 +8,6 @@ import (
 	"github.com/oligarch316/go-ukase/ukspec"
 )
 
-// =============================================================================
-// Input
-// =============================================================================
-
-type Flag struct{ Name, Value string }
-
-type Input struct {
-	Program string
-	Target  []string
-	Args    []string
-	Flags   []Flag
-}
-
-// =============================================================================
-// Data
-// =============================================================================
-
-type Exec func(context.Context, Input) error
-
-type Meta interface {
-	Info() any
-	Spec() ukspec.Params
-	Children() map[string]Meta
-}
-
-// =============================================================================
-// Mux
-// =============================================================================
-
 type Mux struct {
 	config Config
 	root   *muxNode
@@ -49,73 +20,149 @@ func New(opts ...Option) *Mux {
 	}
 }
 
+type muxNode struct {
+	exec Exec
+	info any
+	spec *ukspec.Params
+
+	children map[string]*muxNode
+	flags    map[string]ukspec.Flag
+}
+
+func newMuxNode() *muxNode {
+	return &muxNode{
+		children: make(map[string]*muxNode),
+		flags:    make(map[string]ukspec.Flag),
+	}
+}
+
+// =============================================================================
+// Write
+// =============================================================================
+
 func (m *Mux) RegisterExec(exec Exec, spec ukspec.Params, target ...string) error {
-	if err := m.copyFlags(spec.FlagIndex); err != nil {
+	if err := m.validateFlags(m.root, target, spec.FlagIndex); err != nil {
 		return err
 	}
 
 	node := m.root
+	m.updateFlags(node, spec.FlagIndex)
 
-	for _, childName := range target {
-		child, ok := node.children[childName]
+	for _, name := range target {
+		child, ok := node.children[name]
 		if !ok {
 			child = newMuxNode()
-			node.children[childName] = child
+			node.children[name] = child
 		}
 
-		child.copyFlags(spec.FlagIndex)
 		node = child
+		m.updateFlags(node, spec.FlagIndex)
 	}
 
-	if node.exec != nil && !m.config.MuxOverwrite {
-		return fmt.Errorf("[TODO RegisterExec] overwrite not allowed on target %v", target)
-	}
-
-	node.exec, node.spec = exec, spec
-	return nil
+	return m.updateExec(node, target, exec, spec)
 }
 
 func (m *Mux) RegisterInfo(info any, target ...string) error {
 	node := m.root
 
-	for _, childName := range target {
-		child, ok := node.children[childName]
+	for _, name := range target {
+		child, ok := node.children[name]
 		if !ok {
 			child = newMuxNode()
-			node.children[childName] = child
+			node.children[name] = child
 		}
 
 		node = child
 	}
 
-	// TODO: Separate config setting for this?
-	if node.info != nil && !m.config.MuxOverwrite {
-		return fmt.Errorf("[TODO RegisterInfo] overwrite not allowed on target %v", target)
+	return m.updateInfo(node, target, info)
+}
+
+func (m *Mux) updateExec(node *muxNode, target []string, exec Exec, spec ukspec.Params) error {
+	if node.spec == nil {
+		node.exec, node.spec = exec, &spec
+		return nil
 	}
 
-	node.info = info
+	overwrite, err := m.config.ExecConflict(*node.spec, spec)
+	if err != nil {
+		return ErrorExecConflict{Target: target, Original: *node.spec, Update: spec, err: err}
+	}
+
+	if overwrite {
+		node.exec, node.spec = exec, &spec
+	}
+
 	return nil
 }
 
-func (m *Mux) Lookup(target ...string) (Meta, error) {
+func (m *Mux) updateInfo(node *muxNode, target []string, info any) error {
+	if node.info == nil {
+		node.info = info
+		return nil
+	}
+
+	overwrite, err := m.config.InfoConflict(node.info, info)
+	if err != nil {
+		return ErrorInfoConflict{Target: target, Original: node.info, Update: info, err: err}
+	}
+
+	if overwrite {
+		node.info = info
+	}
+
+	return nil
+}
+
+func (Mux) updateFlags(node *muxNode, updates map[string]ukspec.Flag) {
+	for name, update := range updates {
+		node.flags[name] = update
+	}
+}
+
+func (m *Mux) validateFlags(node *muxNode, target []string, flags map[string]ukspec.Flag) error {
+	var errs []error
+
+	for name, update := range flags {
+		original, conflict := node.flags[name]
+		if !conflict {
+			continue
+		}
+
+		if err := m.config.FlagConflict(original, update); err != nil {
+			err = ErrorFlagConflict{Target: target, Name: name, Original: original, Update: update, err: err}
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+// =============================================================================
+// Read
+// =============================================================================
+
+func (m *Mux) Meta(target ...string) (Meta, error) {
 	node := m.root
 
-	for _, childName := range target {
-		child, ok := node.children[childName]
+	for _, name := range target {
+		child, ok := node.children[name]
 		if !ok {
-			return nil, fmt.Errorf("[TODO Lookup] go an unknown name: %s", childName)
+			return Meta{}, fmt.Errorf("invalid target '%s': %w", InputTarget(target), ErrTargetNotExist)
 		}
 
 		node = child
 	}
 
-	return node, nil
+	return newMeta(node), nil
 }
 
 func (m *Mux) Execute(ctx context.Context, values []string) error {
 	if len(values) == 0 {
-		return errors.New("[TODO Execute] empty values")
+		return ErrEmptyValues
 	}
+
+	// TODO: Track the current value index for error purposes
 
 	// Set up
 	programName, parser := values[0], parser(values[1:])
@@ -160,77 +207,5 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 		return node.exec(ctx, input)
 	}
 
-	return m.config.ExecDefault(ctx, input)
-}
-
-func (m *Mux) copyFlags(flags map[string]ukspec.Flag) error {
-	checkLevel := m.config.FlagCheck
-
-	for name, spec := range flags {
-		extant, exists := m.root.flags[name]
-		if !exists {
-			m.root.flags[name] = spec
-			continue
-		}
-
-		elideMatch := extant.Elide.Allow == spec.Elide.Allow
-		typeMatch := extant.Type == spec.Type
-
-		switch {
-		case checkLevel == FlagCheckElide && !elideMatch:
-			return errors.New("[TODO copyFlags] flag elide conflict")
-		case checkLevel == FlagCheckType && !typeMatch:
-			return errors.New("[TODO copyFlags] flag type conflict")
-		}
-
-		m.root.flags[name] = spec
-	}
-
-	return nil
-}
-
-// =============================================================================
-// Mux Node
-// =============================================================================
-
-type muxNode struct {
-	exec Exec
-	spec ukspec.Params
-	info any
-
-	flags    map[string]ukspec.Flag
-	children map[string]*muxNode
-}
-
-func newMuxNode() *muxNode {
-	return &muxNode{
-		flags:    make(map[string]ukspec.Flag),
-		children: make(map[string]*muxNode),
-	}
-}
-
-func (mn *muxNode) Info() any { return mn.info }
-
-func (mn *muxNode) Spec() ukspec.Params {
-	if mn.spec.Type != nil {
-		return mn.spec
-	}
-
-	return ukspec.Empty
-}
-
-func (mn *muxNode) Children() map[string]Meta {
-	res := make(map[string]Meta)
-
-	for childName, child := range mn.children {
-		res[childName] = child
-	}
-
-	return res
-}
-
-func (mn *muxNode) copyFlags(flags map[string]ukspec.Flag) {
-	for name, spec := range flags {
-		mn.flags[name] = spec
-	}
+	return m.config.ExecUnspecified(ctx, input)
 }

@@ -28,10 +28,10 @@ func genInput(t *testing.T, flagPairs ...string) ukcore.Input {
 		require.Fail(t, "genInput() called with uneven number of flag pairs")
 	}
 
-	var flags []ukcore.Flag
+	var flags []ukcore.InputFlag
 	for i := 0; i < len(flagPairs); i += 2 {
 		name, value := flagPairs[i], flagPairs[i+1]
-		flags = append(flags, ukcore.Flag{Name: name, Value: value})
+		flags = append(flags, ukcore.InputFlag{Name: name, Value: value})
 	}
 
 	return ukcore.Input{Target: []string{"testTarget"}, Flags: flags}

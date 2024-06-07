@@ -96,8 +96,8 @@ func (p *parser) ConsumeToken() token {
 	return newToken(val)
 }
 
-func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]Flag, error) {
-	var flags []Flag
+func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]InputFlag, error) {
+	var flags []InputFlag
 
 	for len(*p) > 0 {
 		nextToken := newToken((*p)[0])
@@ -113,13 +113,16 @@ func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]Flag, error) {
 		}
 
 		if nextToken.Kind == kindFlag {
-			// Consume the flag-name
-			flagName, _ := nextToken.Value, p.consumeValue()
+			flagName := nextToken.Value
+			flagSpec, flagValid := specs[flagName]
 
-			flagSpec, ok := specs[flagName]
-			if !ok {
+			// Fail pre-consumption on an unknown flag name
+			if !flagValid {
 				return flags, errors.New("[TODO ConsumeFlags] got an unknown flag name")
 			}
+
+			// Consume the flag-name
+			_ = p.consumeValue()
 
 			// Consume the flag-value
 			flagVal, err := p.consumeFlagValue(flagSpec)
@@ -127,7 +130,7 @@ func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]Flag, error) {
 				return flags, err
 			}
 
-			flags = append(flags, Flag{Name: flagName, Value: flagVal})
+			flags = append(flags, InputFlag{Name: flagName, Value: flagVal})
 			continue
 		}
 
@@ -150,7 +153,7 @@ func (p *parser) consumeFlagValue(spec ukspec.Flag) (string, error) {
 	if spec.Elide.Allow && (peekEmpty || !peekValid) {
 		// Optional flag-value is either unavailable or inappropriate
 		// ⇒ Return placeholder as flag-value
-		return "true", nil
+		return "true", nil // TODO: No magic
 	}
 
 	// Flag value is available and appropriate
