@@ -8,9 +8,8 @@ import (
 )
 
 var (
-	ErrInternal       = errors.New("INTERNAL ukase error")
 	ErrTargetNotExist = errors.New("target does not exist")
-	ErrEmptyValues    = errors.New("values are empty")
+	ErrMissingProgram = errors.New("missing program name")
 )
 
 type ErrorExecConflict struct {
@@ -56,3 +55,12 @@ func (eic ErrorInfoConflict) Error() string {
 		eic.Target, eic.err,
 	)
 }
+
+type ErrorParse struct {
+	Target   InputTarget
+	Position int
+	err      error
+}
+
+func (ep ErrorParse) Unwrap() error { return ep.err }
+func (ep ErrorParse) Error() string { return ep.err.Error() }

@@ -158,54 +158,51 @@ func (m *Mux) Meta(target ...string) (Meta, error) {
 }
 
 func (m *Mux) Execute(ctx context.Context, values []string) error {
-	if len(values) == 0 {
-		return ErrEmptyValues
+	parser := newParser(values)
+
+	program, ok := parser.ConsumeValue()
+	if !ok {
+		return ErrorParse{err: ErrMissingProgram}
 	}
 
-	// TODO: Track the current value index for error purposes
-
-	// Set up
-	programName, parser := values[0], parser(values[1:])
-	input := Input{Program: programName}
+	input := Input{Program: program}
 	node := m.root
 
 	for {
-		// Flags
+		// Consume all flags for the current node
 		flags, err := parser.ConsumeFlags(node.flags)
 		if err != nil {
-			return err
+			return ErrorParse{Target: input.Target, Position: parser.Position, err: err}
 		}
 
 		input.Flags = append(input.Flags, flags...)
 
-		// Subcommands
+		// Consume the next token of kind ...
 		token := parser.ConsumeToken()
 
+		// ... ❬Delim❭ or ❬EOF❭ ⇒ break out to argument parsing
 		if token.Kind == kindDelim || token.Kind == kindEOF {
 			break
 		}
 
-		if token.Kind != kindString {
-			return fmt.Errorf("[TODO Execute] <INTERNAL> got an unexpected token kind (%s)", token.Kind)
-		}
-
+		// ... non-subcommand ⇒ set as 1st argument and break out to argument parsing
 		child, ok := node.children[token.Value]
 		if !ok {
 			input.Args = append(input.Args, token.Value)
 			break
 		}
 
+		// ... subcommand ⇒ append command name to target and continue
 		input.Target = append(input.Target, token.Value)
 		node = child
 	}
 
-	// Args
-	input.Args = append(input.Args, parser...)
+	// All remaining unconsumed values are treated as arguments
+	input.Args = append(input.Args, parser.Values...)
 
-	// Exec
-	if node.exec != nil {
-		return node.exec(ctx, input)
+	if node.exec == nil {
+		return m.config.ExecUnspecified(ctx, input)
 	}
 
-	return m.config.ExecUnspecified(ctx, input)
+	return node.exec(ctx, input)
 }
