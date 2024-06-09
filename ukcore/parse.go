@@ -1,7 +1,6 @@
 package ukcore
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/oligarch316/go-ukase/ukspec"
@@ -43,7 +42,7 @@ type token struct {
 	Value string
 }
 
-func (t token) String() string { return fmt.Sprintf("<%s>%s", t.Kind, t.Value) }
+func (t token) String() string { return fmt.Sprintf("❬%s❭ %s", t.Kind, t.Value) }
 
 func newToken(str string) token {
 	rs := []rune(str)
@@ -85,83 +84,108 @@ func newToken(str string) token {
 // Parser
 // =============================================================================
 
-type parser []string
+const elidePlaceholder = "true"
+
+type parser struct {
+	Position int
+	Values   []string
+}
+
+func newParser(values []string) *parser { return &parser{Values: values} }
+
+func (p *parser) consume() {
+	p.Values = p.Values[1:]
+	p.Position += 1
+}
+
+func (p *parser) peek() (string, bool) {
+	if len(p.Values) == 0 {
+		return "", false
+	}
+	return p.Values[0], true
+}
+
+func (p *parser) ConsumeValue() (val string, exists bool) {
+	if val, exists = p.peek(); exists {
+		p.consume()
+	}
+	return
+}
 
 func (p *parser) ConsumeToken() token {
-	if len(*p) == 0 {
-		return token{Kind: kindEOF}
+	if val, ok := p.ConsumeValue(); ok {
+		return newToken(val)
 	}
-
-	val := p.consumeValue()
-	return newToken(val)
+	return token{Kind: kindEOF}
 }
 
 func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]InputFlag, error) {
 	var flags []InputFlag
 
-	for len(*p) > 0 {
-		nextToken := newToken((*p)[0])
+	for peekVal, exists := p.peek(); exists; peekVal, exists = p.peek() {
+		peekToken := newToken(peekVal)
 
-		if nextToken.Kind == kindDelim || nextToken.Kind == kindString {
+		// ❬Delim❭ or ❬String❭ ⇒ do not consume, return flags
+		if peekToken.Kind == kindDelim || peekToken.Kind == kindString {
 			return flags, nil
 		}
 
-		if nextToken.Kind == kindEmpty {
-			// Consume empty token
-			_ = p.consumeValue()
+		// ❬Empty❭ ⇒ consume and continue
+		if peekToken.Kind == kindEmpty {
+			p.consume()
 			continue
 		}
 
-		if nextToken.Kind == kindFlag {
-			flagName := nextToken.Value
+		// ❬Flag❭
+		if peekToken.Kind == kindFlag {
+			flagName := peekToken.Value
 			flagSpec, flagValid := specs[flagName]
 
-			// Fail pre-consumption on an unknown flag name
+			// Invalid flag name ⇒ do not consume, fail
 			if !flagValid {
-				return flags, errors.New("[TODO ConsumeFlags] got an unknown flag name")
+				return flags, fmt.Errorf("invalid flag '%s'", flagName)
 			}
 
-			// Consume the flag-name
-			_ = p.consumeValue()
+			// Consume flag name
+			p.consume()
 
-			// Consume the flag-value
-			flagVal, err := p.consumeFlagValue(flagSpec)
+			// Consume flag value
+			flagVal, err := p.consumeFlagValue(flagName, flagSpec)
 			if err != nil {
 				return flags, err
 			}
 
+			// Append and continue
 			flags = append(flags, InputFlag{Name: flagName, Value: flagVal})
 			continue
 		}
 
-		return flags, errors.New("[TODO ConsumeFlags] got a bad token kind")
+		// Unexpected ⇒ do not consume, fail (internal error)
+		return flags, fmt.Errorf("internal ukase parse error: unexpected token kind %s", peekToken.Kind)
 	}
 
+	// ❬EOF❭
 	return flags, nil
 }
 
-func (p *parser) consumeFlagValue(spec ukspec.Flag) (string, error) {
-	peekEmpty := len(*p) == 0
-	peekValid := !peekEmpty && spec.Elide.Consumable((*p)[0])
+func (p *parser) consumeFlagValue(name string, spec ukspec.Flag) (string, error) {
+	peekVal, peekExists := p.peek()
+	peekUsable := peekExists && spec.Elide.Consumable(peekVal)
 
-	if !spec.Elide.Allow && peekEmpty {
-		// Required flag-value is not available
-		// ⇒ Fail
-		return "", errors.New("[TODO consumeFlagValue] got a non-eliable flag with empty peek")
+	// Required value is not available
+	// ⇒ do not consume, fail
+	if !spec.Elide.Allow && !peekExists {
+		return "", fmt.Errorf("missing value for flag '%s'", name)
 	}
 
-	if spec.Elide.Allow && (peekEmpty || !peekValid) {
-		// Optional flag-value is either unavailable or inappropriate
-		// ⇒ Return placeholder as flag-value
-		return "true", nil // TODO: No magic
+	// Optional value is either not available or inappropriate
+	// ⇒ do not consume, return a placeholder
+	if spec.Elide.Allow && !peekUsable {
+		return elidePlaceholder, nil
 	}
 
-	// Flag value is available and appropriate
-	// ⇒ Consume and return actual value as flag-value
-	return p.consumeValue(), nil
-}
-
-func (p *parser) consumeValue() (val string) {
-	val, *p = (*p)[0], (*p)[1:]
-	return
+	// Value is available and appropriate
+	// ⇒ consume and return value
+	p.consume()
+	return peekVal, nil
 }
