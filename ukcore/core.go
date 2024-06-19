@@ -32,6 +32,8 @@ func (i InputTarget) String() string { return strings.Join(i, "›") }
 type InputFlag struct{ Name, Value string }
 
 func (i InputFlag) String() string {
+	// TODO: Move this logic into ukspec?
+
 	switch len(i.Name) {
 	case 0:
 		return "<invalid>"
@@ -46,12 +48,8 @@ func (i InputFlag) String() string {
 // Meta
 // =============================================================================
 
-var (
-	metaEmptyInfo = "No information available"
-	metaEmptySpec = ukspec.Empty
-)
-
 type Meta struct {
+	Exec bool
 	Info any
 	Spec ukspec.Params
 
@@ -60,8 +58,9 @@ type Meta struct {
 
 func newMeta(node *muxNode) Meta {
 	meta := Meta{
-		Info:     metaEmptyInfo,
-		Spec:     metaEmptySpec,
+		Exec:     node.exec != nil,
+		Info:     nil,
+		Spec:     ukspec.Empty,
 		children: node.children,
 	}
 
