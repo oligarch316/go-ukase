@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
+	"github.com/oligarch316/go-ukase/internal"
 	"github.com/oligarch316/go-ukase/ukspec"
 )
 
@@ -16,6 +18,9 @@ import (
 type Option interface{ UkaseApplyCore(*Config) }
 
 type Config struct {
+	// TODO: Document
+	Log *slog.Logger
+
 	// TODO: Document
 	ExecUnspecified Exec
 
@@ -42,6 +47,7 @@ func newConfig(opts []Option) Config {
 // =============================================================================
 
 var cfgDefault = Config{
+	Log:             internal.LogDiscard,
 	ExecUnspecified: cfgExecUnspecified,
 	ExecConflict:    cfgExecConflict,
 	InfoConflict:    cfgInfoConflict,

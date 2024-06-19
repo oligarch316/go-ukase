@@ -41,6 +41,12 @@ func newMuxNode() *muxNode {
 // =============================================================================
 
 func (m *Mux) RegisterExec(exec Exec, spec ukspec.Params, target ...string) error {
+	m.config.Log.Debug(
+		"registering exec",
+		"target", InputTarget(target),
+		"paramsType", spec.Type,
+	)
+
 	if err := m.validateFlags(m.root, target, spec.FlagIndex); err != nil {
 		return err
 	}
@@ -63,6 +69,12 @@ func (m *Mux) RegisterExec(exec Exec, spec ukspec.Params, target ...string) erro
 }
 
 func (m *Mux) RegisterInfo(info any, target ...string) error {
+	m.config.Log.Debug(
+		"registering info",
+		"target", InputTarget(target),
+		"infoType", fmt.Sprintf("%T", info),
+	)
+
 	node := m.root
 
 	for _, name := range target {
@@ -199,6 +211,8 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 
 	// All remaining unconsumed values are treated as arguments
 	input.Args = append(input.Args, parser.Values...)
+
+	m.config.Log.Info("executing", "target", input.Target)
 
 	if node.exec == nil {
 		return m.config.ExecUnspecified(ctx, input)

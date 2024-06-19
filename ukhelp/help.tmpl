@@ -1,13 +1,76 @@
-Info:
-    {{ printf "%+v" .info }}
+{{- /*
+================================================================================
+ DEFINITIONS
+================================================================================
+*/ -}}
 
-Subcommands:
-{{- range $name, $info := .subcommands }}
-    {{ printf "%+v | %+v" $name $info }}
-{{- end }}
+{{- /* ===== DESCRIPTION ===== */ -}}
+{{- define "description" -}}
 
-Parameters:
-    {{ printf "%+v" .parameters }}
+{{ describeCommand .Command }}
 
-Defaults:
-    {{ printf "%+v" .defaults }}
+{{- end -}}
+
+{{- /* ===== USAGE ===== */ -}}
+{{- define "usage" -}}
+{{- $usageTarget := .Command.Program -}}
+{{- if hasCommandTarget . -}} {{- $usageTarget = printf "%s %s" $usageTarget ( stringsJoin .Command.Target " " ) -}} {{- end -}}
+
+Usage:
+{{- if hasSubcommands . }}
+  {{ $usageTarget }} [command]
+{{- end -}}
+
+{{- if hasCommandExec . }}
+  {{ $usageTarget }}
+  {{- if hasFlags .     }} [flag...]     {{- end -}}
+  {{- if hasArguments . }} [argument...] {{- end -}}
+{{- end -}}
+
+{{- end -}}
+
+{{- /* ===== SUBCOMMANDS ===== */ -}}
+{{- define "subcommands" -}}
+{{- $maxLabel := maxLabelSubcommands . -}}
+
+Commands:
+{{- range .Subcommands }}
+  {{ printf "%-*s  %s" $maxLabel ( labelSubcommand . ) ( describeSubcommand . ) }}
+{{- end -}}
+
+{{- end -}}
+
+{{- /* ===== ARGUMENTS ===== */ -}}
+{{- define "arguments" -}}
+{{- $maxLabel := maxLabelArguments . -}}
+
+Arguments:
+{{- range .Arguments }}
+  {{ printf "%-*s %s" $maxLabel ( labelArgument . ) ( describeArgument . ) }}
+{{- end -}}
+
+{{- end -}}
+
+{{- /* ===== FLAGS ===== */ -}}
+{{- define "flags" -}}
+{{- $maxLabel := maxLabelFlags . -}}
+
+Flags:
+{{- range .Flags }}
+  {{ printf "%-*s %s" $maxLabel ( labelFlag . ) ( describeFlag . ) }}
+{{- end -}}
+
+{{- end -}}
+
+{{- /*
+================================================================================
+ DISPLAY
+================================================================================
+*/ -}}
+
+{{- template "description" . -}} {{- "\n" -}}
+
+{{- if hasUsage .       -}} {{- "\n" -}} {{- template "usage" .       -}} {{- "\n" -}} {{- end -}}
+{{- if hasSubcommands . -}} {{- "\n" -}} {{- template "subcommands" . -}} {{- "\n" -}} {{- end -}}
+{{- if hasFlags .       -}} {{- "\n" -}} {{- template "flags" .       -}} {{- "\n" -}} {{- end -}}
+{{- if hasArguments .   -}} {{- "\n" -}} {{- template "arguments" .   -}} {{- "\n" -}} {{- end -}}
