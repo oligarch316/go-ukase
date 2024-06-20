@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/oligarch316/go-ukase/ukcore"
 	"github.com/oligarch316/go-ukase/ukcore/ukdec"
+	"github.com/oligarch316/go-ukase/ukcore/ukexec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,26 +22,26 @@ import (
 
 func pointerTo[T any](val T) *T { return &val }
 
-func genInput(t *testing.T, flagPairs ...string) ukcore.Input {
+func genInput(t *testing.T, flagPairs ...string) ukexec.Input {
 	nPairs := len(flagPairs)
 	if nPairs%2 != 0 {
 		require.Fail(t, "genInput() called with uneven number of flag pairs")
 	}
 
-	var flags []ukcore.InputFlag
+	var flags []ukexec.InputFlag
 	for i := 0; i < len(flagPairs); i += 2 {
 		name, value := flagPairs[i], flagPairs[i+1]
-		flags = append(flags, ukcore.InputFlag{Name: name, Value: value})
+		flags = append(flags, ukexec.InputFlag{Name: name, Value: value})
 	}
 
-	return ukcore.Input{Target: []string{"testTarget"}, Flags: flags}
+	return ukexec.Input{Target: []string{"testTarget"}, Flags: flags}
 }
 
 func TestDecodeError(t *testing.T) {
 	type subtest struct {
 		name     string
 		expected error
-		input    ukcore.Input
+		input    ukexec.Input
 		params   any
 	}
 
