@@ -75,8 +75,8 @@ func (r *Runtime) prepare(state State) error {
 		state = middleware(state)
 	}
 
-	for _, directive := range r.directives {
-		if err := directive.UkaseRegister(state); err != nil {
+	for _, d := range r.directives {
+		if err := d.UkaseRegister(state); err != nil {
 			return err
 		}
 	}
@@ -111,7 +111,7 @@ func NewInfo(info any) Info {
 
 func (i Info) Bind(target ...string) Directive {
 	df := func(state State) error { return state.RegisterInfo(i.Value, target) }
-	return DirectiveFunc(df)
+	return directive(df)
 }
 
 // =============================================================================
@@ -122,20 +122,19 @@ type Exec[Params any] func(context.Context, Input) error
 
 func (e Exec[Params]) Bind(target ...string) Directive {
 	df := func(state State) error { return e.register(state, target) }
-	return DirectiveFunc(df)
+	return directive(df)
 }
 
 func (e Exec[Params]) register(state State, target []string) error {
 	t := reflect.TypeFor[Params]()
 
-	spec, err := state.loadSpec(t)
+	spec, err := state.spec(t)
 	if err != nil {
 		return err
 	}
 
-	exec := func(ctx context.Context, coreInput ukcore.Input) error {
-		input := Input{Input: coreInput, state: state}
-		return e(ctx, input)
+	exec := func(ctx context.Context, in ukcore.Input) error {
+		return e(ctx, newInput(in, state))
 	}
 
 	return state.RegisterExec(exec, spec, target)

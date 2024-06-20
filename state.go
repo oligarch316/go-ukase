@@ -13,24 +13,27 @@ import (
 // Directive
 // =============================================================================
 
+var _ Directive = directive(nil)
+
 type Directive interface {
 	UkaseRegister(State) error
 }
 
-type DirectiveFunc func(State) error
+type directive func(State) error
 
-func (df DirectiveFunc) UkaseRegister(state State) error { return df(state) }
+func (d directive) UkaseRegister(state State) error { return d(state) }
 
 // =============================================================================
 // State
 // =============================================================================
 
+var _ State = (*state)(nil)
+
 type State interface {
 	decode(ukcore.Input, any) error
 	initialize(any) error
-
-	loadMeta(target []string) (ukcore.Meta, error)
-	loadSpec(t reflect.Type) (ukspec.Params, error)
+	meta(target []string) (ukcore.Meta, error)
+	spec(t reflect.Type) (ukspec.Params, error)
 
 	RegisterExec(exec ukcore.Exec, spec ukspec.Params, target []string) error
 	RegisterInfo(info any, target []string) error
@@ -65,11 +68,11 @@ func (s *state) initialize(v any) error {
 	return s.ruleSet.Process(spec, v)
 }
 
-func (s *state) loadMeta(target []string) (ukcore.Meta, error) {
+func (s *state) meta(target []string) (ukcore.Meta, error) {
 	return s.mux.Meta(target...)
 }
 
-func (s *state) loadSpec(t reflect.Type) (ukspec.Params, error) {
+func (s *state) spec(t reflect.Type) (ukspec.Params, error) {
 	return ukspec.New(t, s.config.Spec...)
 }
 
@@ -89,11 +92,25 @@ func (s *state) RegisterRule(rule ukinit.Rule) {
 // Input
 // =============================================================================
 
-type Input struct {
-	ukcore.Input
+var _ Input = input{}
+
+type Input interface {
+	Core() ukcore.Input
+	Decode(any) error
+	Initialize(any) error
+	Meta(target []string) (ukcore.Meta, error)
+}
+
+type input struct {
+	core  ukcore.Input
 	state State
 }
 
-func (i Input) Decode(v any) error                        { return i.state.decode(i.Input, v) }
-func (i Input) Initialize(v any) error                    { return i.state.initialize(v) }
-func (i Input) Meta(target []string) (ukcore.Meta, error) { return i.state.loadMeta(target) }
+func newInput(core ukcore.Input, state State) input {
+	return input{core: core, state: state}
+}
+
+func (i input) Core() ukcore.Input                        { return i.core }
+func (i input) Decode(v any) error                        { return i.state.decode(i.core, v) }
+func (i input) Initialize(v any) error                    { return i.state.initialize(v) }
+func (i input) Meta(target []string) (ukcore.Meta, error) { return i.state.meta(target) }
