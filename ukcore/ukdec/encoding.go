@@ -1,4 +1,4 @@
-package ukenc
+package ukdec
 
 import (
 	"errors"

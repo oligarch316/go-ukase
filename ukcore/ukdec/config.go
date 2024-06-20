@@ -1,4 +1,4 @@
-package ukenc
+package ukdec
 
 import "github.com/oligarch316/go-ukase/ukspec"
 
