@@ -1,11 +1,11 @@
-package ukenc_test
+package ukdec_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukreflect/ukenc"
+	"github.com/oligarch316/go-ukase/ukcore/ukdec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,24 +49,24 @@ func TestDecodeError(t *testing.T) {
 		// ===== Invalid parameters
 		{
 			name:     "params non-pointer",
-			expected: new(ukenc.ErrorDecodeParams),
+			expected: new(ukdec.ErrorDecodeParams),
 			params:   struct{}{},
 		},
 		{
 			name:     "params nil pointer",
-			expected: new(ukenc.ErrorDecodeParams),
+			expected: new(ukdec.ErrorDecodeParams),
 			params:   (*struct{})(nil),
 		},
 		{
 			name:     "params non-struct",
-			expected: new(ukenc.ErrorDecodeParams),
+			expected: new(ukdec.ErrorDecodeParams),
 			params:   new(string),
 		},
 
 		// ===== Invalid parameters field
 		{
 			name:     "field array",
-			expected: new(ukenc.ErrorDecodeField),
+			expected: new(ukdec.ErrorDecodeField),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A [42]int `ukflag:"flagA"`
@@ -74,7 +74,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "field channel",
-			expected: new(ukenc.ErrorDecodeField),
+			expected: new(ukdec.ErrorDecodeField),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A chan int `ukflag:"flagA"`
@@ -82,7 +82,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "field function",
-			expected: new(ukenc.ErrorDecodeField),
+			expected: new(ukdec.ErrorDecodeField),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A func() `ukflag:"flagA"`
@@ -90,7 +90,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "field map",
-			expected: new(ukenc.ErrorDecodeField),
+			expected: new(ukdec.ErrorDecodeField),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A map[int]int `ukflag:"flagA"`
@@ -98,7 +98,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "field struct",
-			expected: new(ukenc.ErrorDecodeField),
+			expected: new(ukdec.ErrorDecodeField),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A struct{} `ukflag:"flagA"`
@@ -107,7 +107,7 @@ func TestDecodeError(t *testing.T) {
 		// TODO:
 		// {
 		// 	name:     "field bespoke zero value interface",
-		// 	expected: new(ukenc.ErrorDecodeField),
+		// 	expected: new(ukdec.ErrorDecodeField),
 		// 	input:    genInput(t, "flagA", "valA"),
 		// 	params: new(struct {
 		// 		A interface{ Bespoke() } `ukflag:"flagA"`
@@ -117,7 +117,7 @@ func TestDecodeError(t *testing.T) {
 		// ===== Invalid flag name
 		{
 			name:     "flag name missing",
-			expected: new(ukenc.ErrorDecodeFlagName),
+			expected: new(ukdec.ErrorDecodeFlagName),
 			input:    genInput(t, "flagA", "valA"),
 			params:   new(struct{}),
 		},
@@ -125,7 +125,7 @@ func TestDecodeError(t *testing.T) {
 		// ===== Invalid flag value
 		{
 			name:     "flag value invalid bool",
-			expected: new(ukenc.ErrorDecodeFlagValue),
+			expected: new(ukdec.ErrorDecodeFlagValue),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A bool `ukflag:"flagA"`
@@ -133,7 +133,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value NaN int",
-			expected: new(ukenc.ErrorDecodeFlagValue),
+			expected: new(ukdec.ErrorDecodeFlagValue),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A int `ukflag:"flagA"`
@@ -141,7 +141,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value NaN uint",
-			expected: new(ukenc.ErrorDecodeFlagValue),
+			expected: new(ukdec.ErrorDecodeFlagValue),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A uint `ukflag:"flagA"`
@@ -149,7 +149,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value NaN float",
-			expected: new(ukenc.ErrorDecodeFlagValue),
+			expected: new(ukdec.ErrorDecodeFlagValue),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A float32 `ukflag:"flagA"`
@@ -157,7 +157,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value NaN complex",
-			expected: new(ukenc.ErrorDecodeFlagValue),
+			expected: new(ukdec.ErrorDecodeFlagValue),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A complex64 `ukflag:"flagA"`
@@ -165,7 +165,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value invalid TextUnmarshaler",
-			expected: new(ukenc.ErrorDecodeFlagValue),
+			expected: new(ukdec.ErrorDecodeFlagValue),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A time.Time `ukflag:"flagA"`
@@ -177,8 +177,8 @@ func TestDecodeError(t *testing.T) {
 		st := subtest
 
 		t.Run(st.name, func(t *testing.T) {
-			err := ukenc.NewDecoder(st.input).Decode(st.params)
-			require.ErrorIs(t, err, ukenc.ErrDecode)
+			err := ukdec.NewDecoder(st.input).Decode(st.params)
+			require.ErrorIs(t, err, ukdec.ErrDecode)
 			require.ErrorAs(t, err, st.expected)
 		})
 	}
@@ -219,7 +219,7 @@ func TestDecodeDirect(t *testing.T) {
 
 	var actual Params
 
-	err := ukenc.NewDecoder(input).Decode(&actual)
+	err := ukdec.NewDecoder(input).Decode(&actual)
 	require.NoError(t, err, "check Decode error")
 	assert.Equal(t, expected, actual, "check result")
 }
@@ -239,7 +239,7 @@ func TestDecodeCustom(t *testing.T) {
 
 	var actual Params
 
-	err := ukenc.NewDecoder(input).Decode(&actual)
+	err := ukdec.NewDecoder(input).Decode(&actual)
 	require.NoError(t, err, "check Decode error")
 	assert.Equal(t, expected, actual, "check result")
 }
@@ -281,7 +281,7 @@ func TestDecodeIndirect(t *testing.T) {
 
 	var actual Params
 
-	err := ukenc.NewDecoder(input).Decode(&actual)
+	err := ukdec.NewDecoder(input).Decode(&actual)
 	require.NoError(t, err, "check Decode error")
 	assert.Equal(t, expected, actual, "check result")
 }
@@ -300,7 +300,7 @@ func TestDecodeBaroque(t *testing.T) {
 			actual   = Params{ParamAny: false}
 		)
 
-		err := ukenc.NewDecoder(input).Decode(&actual)
+		err := ukdec.NewDecoder(input).Decode(&actual)
 		require.NoError(t, err, "check Decode error")
 		assert.Equal(t, expected, actual, "check result")
 	})
@@ -320,7 +320,7 @@ func TestDecodeBaroque(t *testing.T) {
 			ParamAny: time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
 		}
 
-		err := ukenc.NewDecoder(input).Decode(&actual)
+		err := ukdec.NewDecoder(input).Decode(&actual)
 		require.NoError(t, err, "check Decode error")
 		assert.Equal(t, expected, actual, "check result")
 	})
@@ -346,7 +346,7 @@ func TestDecodeBaroque(t *testing.T) {
 
 		var actual Params
 
-		err := ukenc.NewDecoder(input).Decode(&actual)
+		err := ukdec.NewDecoder(input).Decode(&actual)
 		require.NoError(t, err, "check Decode error")
 		assert.Equal(t, expected, actual, "check result")
 	})
@@ -360,7 +360,7 @@ func TestDecodeBaroque(t *testing.T) {
 		expected := Params{ParamAny: pointerTo[any]("old-thing")}
 		actual := Params{ParamAny: pointerTo[any](nil)}
 
-		err := ukenc.NewDecoder(input).Decode(&actual)
+		err := ukdec.NewDecoder(input).Decode(&actual)
 		require.NoError(t, err, "check Decode error")
 		assert.Equal(t, expected, actual, "check result")
 	})
@@ -380,7 +380,7 @@ func TestDecodeBaroque(t *testing.T) {
 			ParamAny: pointerTo[any](false),
 		}
 
-		err := ukenc.NewDecoder(input).Decode(&actual)
+		err := ukdec.NewDecoder(input).Decode(&actual)
 		require.NoError(t, err, "check Decode error")
 		assert.Equal(t, expected, actual, "check result")
 	})
@@ -411,7 +411,7 @@ func TestDecodeEmbedded(t *testing.T) {
 		expected.ParamEmbedded = "valEmbedded"
 		expected.ParamStandard = "valStandard"
 
-		err := ukenc.NewDecoder(input).Decode(&actual)
+		err := ukdec.NewDecoder(input).Decode(&actual)
 		require.NoError(t, err, "check Decode error")
 		assert.Equal(t, expected, actual, "check result")
 	})
@@ -438,7 +438,7 @@ func TestDecodeEmbedded(t *testing.T) {
 
 		actual := Params{}
 
-		err := ukenc.NewDecoder(input).Decode(&actual)
+		err := ukdec.NewDecoder(input).Decode(&actual)
 		require.NoError(t, err, "check Decode error")
 		assert.Equal(t, expected, actual, "check result")
 	})
@@ -468,7 +468,7 @@ func TestDecodeEmbedded(t *testing.T) {
 			ParamStandard: "defaultStandard",
 		}
 
-		err := ukenc.NewDecoder(input).Decode(&actual)
+		err := ukdec.NewDecoder(input).Decode(&actual)
 		require.NoError(t, err, "check Decode error")
 		assert.Equal(t, expected, actual, "check result")
 	})
