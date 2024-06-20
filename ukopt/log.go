@@ -5,7 +5,7 @@ import (
 
 	"github.com/oligarch316/go-ukase"
 	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukhelpx"
+	"github.com/oligarch316/go-ukase/ukhelp"
 	"github.com/oligarch316/go-ukase/ukreflect/ukenc"
 	"github.com/oligarch316/go-ukase/ukreflect/ukinit"
 	"github.com/oligarch316/go-ukase/ukspec"
@@ -26,8 +26,8 @@ func (l Logger) UkaseApply(c *ukase.Config) {
 	c.Spec = append(c.Spec, l)
 }
 
-func (l Logger) UkaseApplyCore(c *ukcore.Config)  { c.Log = l.with("core") }
-func (l Logger) UkaseApplyEnc(c *ukenc.Config)    { /* TODO */ }
-func (l Logger) UkaseApplyHelp(c *ukhelpx.Config) { c.Log = l.with("help") }
-func (l Logger) UkaseApplyInit(c *ukinit.Config)  { /* TODO */ }
-func (l Logger) UkaseApplySpec(c *ukspec.Config)  { /* TODO */ }
+func (l Logger) UkaseApplyCore(c *ukcore.Config) { c.Log = l.with("core") }
+func (l Logger) UkaseApplyEnc(c *ukenc.Config)   { /* TODO */ }
+func (l Logger) UkaseApplyHelp(c *ukhelp.Config) { c.Log = l.with("help") }
+func (l Logger) UkaseApplyInit(c *ukinit.Config) { /* TODO */ }
+func (l Logger) UkaseApplySpec(c *ukspec.Config) { /* TODO */ }

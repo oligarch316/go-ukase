@@ -15,21 +15,36 @@ import (
 // Input
 // =============================================================================
 
-type Input struct {
-	ukase.Input
-	Meta      ukcore.Meta
-	Reference ukcore.InputTarget
+var _ Input = input{}
 
+type InputReference struct {
+	ukcore.Meta
+	Target ukcore.InputTarget
+}
+
+type Input interface {
+	ukase.Input
+
+	Reference() InputReference
+	DefaultByIndex(index []int) (any, error)
+}
+
+type input struct {
+	ukase.Input
+
+	reference    InputReference
 	loadDefaults func() (reflect.Value, error)
 }
 
-func newInput(ref []string, in ukase.Input) (Input, error) {
-	reference := append(ref, in.Args...)
+func newInput(ref []string, in ukase.Input) (input, error) {
+	ref = append(ref, in.Core().Args...)
 
-	meta, err := in.Meta(reference)
+	meta, err := in.Meta(ref)
 	if err != nil {
-		return Input{}, err
+		return input{}, err
 	}
+
+	reference := InputReference{Meta: meta, Target: ref}
 
 	loadDefaults := func() (reflect.Value, error) {
 		ptrVal := reflect.New(meta.Spec.Type)
@@ -37,17 +52,18 @@ func newInput(ref []string, in ukase.Input) (Input, error) {
 		return ptrVal.Elem(), err
 	}
 
-	input := Input{
+	input := input{
 		Input:        in,
-		Meta:         meta,
-		Reference:    reference,
+		reference:    reference,
 		loadDefaults: sync.OnceValues(loadDefaults),
 	}
 
 	return input, nil
 }
 
-func (i Input) DefaultByIndex(index []int) (any, error) {
+func (i input) Reference() InputReference { return i.reference }
+
+func (i input) DefaultByIndex(index []int) (any, error) {
 	defaultsVal, err := i.loadDefaults()
 	if err != nil {
 		return nil, err
@@ -72,12 +88,12 @@ type Output struct {
 	Flags       []OutputFlag
 }
 
-func Encode(input Input) Output {
+func Encode(in Input) Output {
 	return Output{
-		Command:     EncodeCommand(input),
-		Subcommands: EncodeSubcommands(input),
-		Arguments:   EncodeArguments(input),
-		Flags:       EncodeFlags(input),
+		Command:     EncodeCommand(in),
+		Subcommands: EncodeSubcommands(in),
+		Arguments:   EncodeArguments(in),
+		Flags:       EncodeFlags(in),
 	}
 }
 
@@ -88,12 +104,14 @@ type OutputCommand struct {
 	Exec        bool
 }
 
-func EncodeCommand(input Input) OutputCommand {
+func EncodeCommand(in Input) OutputCommand {
+	reference := in.Reference()
+
 	return OutputCommand{
-		Description: EncodeDescription(input.Meta.Info),
-		Program:     input.Program,
-		Target:      input.Reference,
-		Exec:        input.Meta.Exec,
+		Description: EncodeDescription(reference.Info),
+		Program:     in.Core().Program,
+		Target:      reference.Target,
+		Exec:        reference.Exec,
 	}
 }
 
@@ -102,10 +120,10 @@ type OutputSubcommand struct {
 	Name        string
 }
 
-func EncodeSubcommands(input Input) []OutputSubcommand {
+func EncodeSubcommands(in Input) []OutputSubcommand {
 	var list []OutputSubcommand
 
-	for name, meta := range input.Meta.Children() {
+	for name, meta := range in.Reference().Children() {
 		description := EncodeDescription(meta.Info)
 		item := OutputSubcommand{Description: description, Name: name}
 		list = append(list, item)
@@ -123,13 +141,13 @@ type OutputArgument struct {
 	Position    OutputArgumentPosition
 }
 
-func EncodeArguments(input Input) []OutputArgument {
+func EncodeArguments(in Input) []OutputArgument {
 	var list []OutputArgument
 
 	// TODO
 	var argSpecs []ukspec.Args
-	if input.Meta.Spec.Args != nil {
-		argSpecs = []ukspec.Args{*input.Meta.Spec.Args}
+	if tmp := in.Reference().Spec.Args; tmp != nil {
+		argSpecs = []ukspec.Args{*tmp}
 	}
 
 	for range argSpecs {
@@ -138,6 +156,8 @@ func EncodeArguments(input Input) []OutputArgument {
 		item := OutputArgument{Position: position}
 		list = append(list, item)
 	}
+
+	// TODO: Sort by position
 
 	return list
 }
@@ -149,10 +169,10 @@ type OutputFlag struct {
 	Names       []string
 }
 
-func EncodeFlags(input Input) []OutputFlag {
+func EncodeFlags(in Input) []OutputFlag {
 	var list []OutputFlag
 
-	for _, spec := range input.Meta.Spec.Flags {
+	for _, spec := range in.Reference().Spec.Flags {
 		names := slices.Clone(spec.FlagNames)
 
 		// Sort by length of flag name
