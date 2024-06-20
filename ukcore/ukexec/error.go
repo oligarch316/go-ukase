@@ -1,4 +1,4 @@
-package ukcore
+package ukexec
 
 import (
 	"errors"
