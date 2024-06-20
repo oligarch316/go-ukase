@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/oligarch316/go-ukase/ukcore"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
-	"github.com/oligarch316/go-ukase/ukreflect"
 )
 
 type Rule interface {
@@ -50,7 +50,7 @@ func NewRuleSet(opts ...Option) *RuleSet {
 }
 
 func (rs *RuleSet) Process(spec ukspec.Params, v any) error {
-	val, err := ukreflect.LoadValueOf(v)
+	paramsVal, err := ukcore.NewParamsValue(v)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (rs *RuleSet) Process(spec ukspec.Params, v any) error {
 	slices.SortStableFunc(inlines, rs.orderInline)
 
 	for _, inlineSpec := range inlines {
-		inlineVal, err := rs.loadInline(val, inlineSpec.FieldIndex)
+		inlineVal, err := rs.loadInline(paramsVal, inlineSpec.FieldIndex)
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ func (rs *RuleSet) Process(spec ukspec.Params, v any) error {
 		}
 	}
 
-	return rs.processValue(val.Addr())
+	return rs.processValue(paramsVal.Addr())
 }
 
 func (rs RuleSet) processValue(val reflect.Value) error {
@@ -101,9 +101,9 @@ func (rs RuleSet) processValue(val reflect.Value) error {
 	return nil
 }
 
-func (RuleSet) loadInline(val reflect.Value, index []int) (reflect.Value, error) {
+func (RuleSet) loadInline(paramsVal ukcore.ParamsValue, index []int) (reflect.Value, error) {
 	// Load the relevant field. Intermediate field constructed automatically.
-	inlineVal := ukreflect.LoadFieldByIndex(val, index)
+	inlineVal := paramsVal.EnsureFieldByIndex(index)
 
 	// Ensure the result is a pointer, using `.Addr()` if necessary
 	if inlineVal.Kind() != reflect.Pointer {
