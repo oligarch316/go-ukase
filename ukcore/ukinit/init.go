@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 	"github.com/oligarch316/go-ukase/ukreflect"
-	"github.com/oligarch316/go-ukase/ukspec"
 )
 
 type Rule interface {
