@@ -1,6 +1,6 @@
 package ukdec
 
-import "github.com/oligarch316/go-ukase/ukspec"
+import "github.com/oligarch316/go-ukase/ukcore/ukspec"
 
 var defaultConfig = Config{}
 
