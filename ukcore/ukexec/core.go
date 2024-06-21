@@ -2,47 +2,46 @@ package ukexec
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
-	"github.com/oligarch316/go-ukase/ukspec"
+	"github.com/oligarch316/go-ukase/ukcore"
+	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
 
 // =============================================================================
 // Exec
 // =============================================================================
 
-type Exec func(context.Context, Input) error
+type Exec func(context.Context, ukcore.Input) error
 
 // =============================================================================
 // Input
 // =============================================================================
 
-type Input struct {
-	Program string
-	Target  InputTarget
-	Args    []string
-	Flags   []InputFlag
-}
+// type Input struct {
+// 	Program string
+// 	Target  InputTarget
+// 	Args    []string
+// 	Flags   []InputFlag
+// }
 
-type InputTarget []string
+// type InputTarget []string
 
-func (i InputTarget) String() string { return strings.Join(i, "›") }
+// func (i InputTarget) String() string { return strings.Join(i, "›") }
 
-type InputFlag struct{ Name, Value string }
+// type InputFlag struct{ Name, Value string }
 
-func (i InputFlag) String() string {
-	// TODO: Move this logic into ukspec?
+// func (i InputFlag) String() string {
+// 	// TODO: Move this logic into ukspec?
 
-	switch len(i.Name) {
-	case 0:
-		return "<invalid>"
-	case 1:
-		return fmt.Sprintf("-%s %s", i.Name, i.Value)
-	default:
-		return fmt.Sprintf("--%s %s", i.Name, i.Value)
-	}
-}
+// 	switch len(i.Name) {
+// 	case 0:
+// 		return "<invalid>"
+// 	case 1:
+// 		return fmt.Sprintf("-%s %s", i.Name, i.Value)
+// 	default:
+// 		return fmt.Sprintf("--%s %s", i.Name, i.Value)
+// 	}
+// }
 
 // =============================================================================
 // Meta

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/oligarch316/go-ukase/ukspec"
+	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
 
 var (
@@ -13,19 +13,19 @@ var (
 )
 
 type ErrorExecConflict struct {
-	Target           InputTarget
+	Target           []string
 	Original, Update ukspec.Params
 	err              error
 }
 
 type ErrorInfoConflict struct {
-	Target           InputTarget
+	Target           []string
 	Original, Update any
 	err              error
 }
 
 type ErrorFlagConflict struct {
-	Target           InputTarget
+	Target           []string
 	Name             string
 	Original, Update ukspec.Flag
 	err              error
@@ -57,7 +57,7 @@ func (eic ErrorInfoConflict) Error() string {
 }
 
 type ErrorParse struct {
-	Target   InputTarget
+	Target   []string
 	Position int
 	err      error
 }

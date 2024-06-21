@@ -5,7 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/oligarch316/go-ukase/ukspec"
+	"github.com/oligarch316/go-ukase/ukcore"
+	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
 
 type Mux struct {
@@ -43,7 +44,7 @@ func newMuxNode() *muxNode {
 func (m *Mux) RegisterExec(exec Exec, spec ukspec.Params, target ...string) error {
 	m.config.Log.Debug(
 		"registering exec",
-		"target", InputTarget(target),
+		"target", target,
 		"paramsType", spec.Type,
 	)
 
@@ -71,7 +72,7 @@ func (m *Mux) RegisterExec(exec Exec, spec ukspec.Params, target ...string) erro
 func (m *Mux) RegisterInfo(info any, target ...string) error {
 	m.config.Log.Debug(
 		"registering info",
-		"target", InputTarget(target),
+		"target", target,
 		"infoType", fmt.Sprintf("%T", info),
 	)
 
@@ -160,7 +161,7 @@ func (m *Mux) Meta(target ...string) (Meta, error) {
 	for _, name := range target {
 		child, ok := node.children[name]
 		if !ok {
-			return Meta{}, fmt.Errorf("invalid target '%s': %w", InputTarget(target), ErrTargetNotExist)
+			return Meta{}, fmt.Errorf("invalid target '%s': %w", target, ErrTargetNotExist)
 		}
 
 		node = child
@@ -177,7 +178,7 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 		return ErrorParse{err: ErrMissingProgram}
 	}
 
-	input := Input{Program: program}
+	input := ukcore.Input{Program: program}
 	node := m.root
 
 	for {
@@ -200,7 +201,7 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 		// ... non-subcommand ⇒ set as 1st argument and break out to argument parsing
 		child, ok := node.children[token.Value]
 		if !ok {
-			input.Args = append(input.Args, token.Value)
+			input.Arguments = append(input.Arguments, token.Value)
 			break
 		}
 
@@ -210,7 +211,7 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 	}
 
 	// All remaining unconsumed values are treated as arguments
-	input.Args = append(input.Args, parser.Values...)
+	input.Arguments = append(input.Arguments, parser.Values...)
 
 	m.config.Log.Info("executing", "target", input.Target)
 

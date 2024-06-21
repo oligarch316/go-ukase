@@ -5,16 +5,15 @@ import (
 	"reflect"
 
 	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukcore/ukexec"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
 
 type Decoder struct {
 	config Config
-	input  ukexec.Input
+	input  ukcore.Input
 }
 
-func NewDecoder(input ukexec.Input, opts ...Option) *Decoder {
+func NewDecoder(input ukcore.Input, opts ...Option) *Decoder {
 	return &Decoder{
 		config: newConfig(opts),
 		input:  input,
@@ -38,7 +37,7 @@ func (d *Decoder) Decode(params any) error {
 		}
 	}
 
-	return d.decodeArgs(paramsVal, spec, d.input.Args)
+	return d.decodeArgs(paramsVal, spec, d.input.Arguments)
 }
 
 func (Decoder) loadValue(v any) (ukcore.ParamsValue, error) {
@@ -60,7 +59,7 @@ func (d Decoder) loadSpec(paramsVal ukcore.ParamsValue) (ukspec.Params, error) {
 	return spec, err
 }
 
-func (d Decoder) decodeFlag(paramsVal ukcore.ParamsValue, spec ukspec.Params, flag ukexec.InputFlag) error {
+func (d Decoder) decodeFlag(paramsVal ukcore.ParamsValue, spec ukspec.Params, flag ukcore.Flag) error {
 	flagSpec, ok := spec.FlagIndex[flag.Name]
 	if !ok {
 		return decodeErr(paramsVal.Value).flagName(flag)

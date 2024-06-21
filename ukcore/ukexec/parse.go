@@ -3,7 +3,8 @@ package ukexec
 import (
 	"fmt"
 
-	"github.com/oligarch316/go-ukase/ukspec"
+	"github.com/oligarch316/go-ukase/ukcore"
+	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
 
 // =============================================================================
@@ -119,8 +120,8 @@ func (p *parser) ConsumeToken() token {
 	return token{Kind: kindEOF}
 }
 
-func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]InputFlag, error) {
-	var flags []InputFlag
+func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]ukcore.Flag, error) {
+	var flags []ukcore.Flag
 
 	for peekVal, exists := p.peek(); exists; peekVal, exists = p.peek() {
 		peekToken := newToken(peekVal)
@@ -156,7 +157,7 @@ func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]InputFlag, error)
 			}
 
 			// Append and continue
-			flags = append(flags, InputFlag{Name: flagName, Value: flagVal})
+			flags = append(flags, ukcore.Flag{Name: flagName, Value: flagVal})
 			continue
 		}
 

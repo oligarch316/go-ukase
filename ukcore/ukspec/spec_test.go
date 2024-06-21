@@ -3,7 +3,7 @@ package ukspec_test
 import (
 	"testing"
 
-	"github.com/oligarch316/go-ukase/ukspec"
+	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 	"github.com/stretchr/testify/require"
 )
 
