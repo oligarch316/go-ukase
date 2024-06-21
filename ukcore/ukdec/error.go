@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/oligarch316/go-ukase/ukcore/ukexec"
+	"github.com/oligarch316/go-ukase/ukcore"
 )
 
 var ErrDecode = errors.New("decode error")
@@ -57,10 +57,10 @@ func (edft ErrorDecodeField) Error() string {
 
 type ErrorDecodeFlagName struct {
 	errorDecode
-	Flag ukexec.InputFlag
+	Flag ukcore.Flag
 }
 
-func (ed errorDecode) flagName(flag ukexec.InputFlag) ErrorDecodeFlagName {
+func (ed errorDecode) flagName(flag ukcore.Flag) ErrorDecodeFlagName {
 	return ErrorDecodeFlagName{errorDecode: ed, Flag: flag}
 }
 
@@ -70,11 +70,11 @@ func (edfn ErrorDecodeFlagName) Error() string {
 
 type ErrorDecodeFlagValue struct {
 	errorDecode
-	Flag ukexec.InputFlag
+	Flag ukcore.Flag
 	err  error
 }
 
-func (ed errorDecode) flagValue(flag ukexec.InputFlag, err error) ErrorDecodeFlagValue {
+func (ed errorDecode) flagValue(flag ukcore.Flag, err error) ErrorDecodeFlagValue {
 	return ErrorDecodeFlagValue{errorDecode: ed, err: err, Flag: flag}
 }
 

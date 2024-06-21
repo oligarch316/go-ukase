@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/oligarch316/go-ukase/internal"
-	"github.com/oligarch316/go-ukase/ukspec"
+	"github.com/oligarch316/go-ukase/ukcore"
+	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
 
 // =============================================================================
@@ -54,7 +55,7 @@ var cfgDefault = Config{
 	FlagConflict:    cfgFlagConflict,
 }
 
-func cfgExecUnspecified(_ context.Context, i Input) error {
+func cfgExecUnspecified(_ context.Context, i ukcore.Input) error {
 	return fmt.Errorf("unspecified target '%s'", strings.Join(i.Target, " "))
 }
 
