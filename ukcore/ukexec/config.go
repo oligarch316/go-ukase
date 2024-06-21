@@ -23,7 +23,7 @@ type Config struct {
 	Log *slog.Logger
 
 	// TODO: Document
-	ExecUnspecified Exec
+	ExecUnspecified ukcore.Exec
 
 	// TODO: Document
 	ExecConflict func(original, update ukspec.Params) (overwrite bool, err error)

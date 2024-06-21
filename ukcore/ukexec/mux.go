@@ -22,7 +22,7 @@ func New(opts ...Option) *Mux {
 }
 
 type muxNode struct {
-	exec Exec
+	exec ukcore.Exec
 	info any
 	spec *ukspec.Params
 
@@ -41,7 +41,7 @@ func newMuxNode() *muxNode {
 // Write
 // =============================================================================
 
-func (m *Mux) RegisterExec(exec Exec, spec ukspec.Params, target ...string) error {
+func (m *Mux) RegisterExec(exec ukcore.Exec, spec ukspec.Params, target ...string) error {
 	m.config.Log.Debug(
 		"registering exec",
 		"target", target,
@@ -91,7 +91,7 @@ func (m *Mux) RegisterInfo(info any, target ...string) error {
 	return m.updateInfo(node, target, info)
 }
 
-func (m *Mux) updateExec(node *muxNode, target []string, exec Exec, spec ukspec.Params) error {
+func (m *Mux) updateExec(node *muxNode, target []string, exec ukcore.Exec, spec ukspec.Params) error {
 	if node.spec == nil {
 		node.exec, node.spec = exec, &spec
 		return nil

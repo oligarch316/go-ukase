@@ -1,51 +1,6 @@
 package ukexec
 
-import (
-	"context"
-
-	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
-)
-
-// =============================================================================
-// Exec
-// =============================================================================
-
-type Exec func(context.Context, ukcore.Input) error
-
-// =============================================================================
-// Input
-// =============================================================================
-
-// type Input struct {
-// 	Program string
-// 	Target  InputTarget
-// 	Args    []string
-// 	Flags   []InputFlag
-// }
-
-// type InputTarget []string
-
-// func (i InputTarget) String() string { return strings.Join(i, "›") }
-
-// type InputFlag struct{ Name, Value string }
-
-// func (i InputFlag) String() string {
-// 	// TODO: Move this logic into ukspec?
-
-// 	switch len(i.Name) {
-// 	case 0:
-// 		return "<invalid>"
-// 	case 1:
-// 		return fmt.Sprintf("-%s %s", i.Name, i.Value)
-// 	default:
-// 		return fmt.Sprintf("--%s %s", i.Name, i.Value)
-// 	}
-// }
-
-// =============================================================================
-// Meta
-// =============================================================================
+import "github.com/oligarch316/go-ukase/ukcore/ukspec"
 
 type Meta struct {
 	Exec bool
