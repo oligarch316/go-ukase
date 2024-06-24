@@ -75,3 +75,32 @@ func (e Exec[Params]) register(state State, target []string) error {
 
 	return state.RegisterExec(exec, spec, target...)
 }
+
+// =============================================================================
+// Handler
+// =============================================================================
+
+type Handler[Params any] func(context.Context, Params) error
+
+func NewHandler[Params any](handler func(context.Context, Params) error) Handler[Params] {
+	return Handler[Params](handler)
+}
+
+func (h Handler[Params]) Bind(target ...string) Directive {
+	exec := Exec[Params](h.exec)
+	return exec.Bind(target...)
+}
+
+func (h Handler[Params]) exec(ctx context.Context, in Input) error {
+	var params Params
+
+	if err := in.Initialize(&params); err != nil {
+		return err
+	}
+
+	if err := in.Decode(&params); err != nil {
+		return err
+	}
+
+	return h(ctx, params)
+}
