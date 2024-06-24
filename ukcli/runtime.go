@@ -127,10 +127,10 @@ func (s *state) RegisterRule(rule ukinit.Rule) {
 var _ Input = input{}
 
 type Input interface {
-	Data() ukcore.Input
+	Core() ukcore.Input
 	Decode(any) error
 	Initialize(any) error
-	Meta(target ...string) (ukexec.Meta, error)
+	Lookup(target ...string) (ukexec.Meta, error)
 }
 
 type input struct {
@@ -142,7 +142,7 @@ func newInput(core ukcore.Input, state State) input {
 	return input{core: core, state: state}
 }
 
-func (i input) Data() ukcore.Input                         { return i.core }
-func (i input) Decode(v any) error                         { return i.state.runDecode(i.core, v) }
-func (i input) Initialize(v any) error                     { return i.state.runInit(v) }
-func (i input) Meta(target ...string) (ukexec.Meta, error) { return i.state.loadMeta(target) }
+func (i input) Core() ukcore.Input                      { return i.core }
+func (i input) Decode(v any) error                      { return i.state.runDecode(i.core, v) }
+func (i input) Initialize(v any) error                  { return i.state.runInit(v) }
+func (i input) Lookup(t ...string) (ukexec.Meta, error) { return i.state.loadMeta(t) }
