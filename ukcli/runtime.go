@@ -20,7 +20,7 @@ type Runtime struct {
 	directives []Directive
 }
 
-func New(opts ...Option) *Runtime {
+func NewRuntime(opts ...Option) *Runtime {
 	config := newConfig(opts)
 	return &Runtime{config: config}
 }
@@ -127,10 +127,9 @@ func (s *state) RegisterRule(rule ukinit.Rule) {
 var _ Input = input{}
 
 type Input interface {
+	Data() ukcore.Input
 	Decode(any) error
 	Initialize(any) error
-
-	Data() ukcore.Input
 	Meta(target ...string) (ukexec.Meta, error)
 }
 
@@ -143,8 +142,7 @@ func newInput(core ukcore.Input, state State) input {
 	return input{core: core, state: state}
 }
 
-func (i input) Decode(v any) error     { return i.state.runDecode(i.core, v) }
-func (i input) Initialize(v any) error { return i.state.runInit(v) }
-
 func (i input) Data() ukcore.Input                         { return i.core }
+func (i input) Decode(v any) error                         { return i.state.runDecode(i.core, v) }
+func (i input) Initialize(v any) error                     { return i.state.runInit(v) }
 func (i input) Meta(target ...string) (ukexec.Meta, error) { return i.state.loadMeta(target) }
