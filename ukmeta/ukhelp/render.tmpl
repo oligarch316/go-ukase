@@ -1,0 +1,77 @@
+{{- /*
+================================================================================
+ DEFINITIONS
+================================================================================
+*/ -}}
+
+{{- /* ===== COMMAND ===== */ -}}
+{{- define "sectionCommand" -}}
+
+{{ describeCommand .Command true }}
+
+{{- end -}}
+
+{{- /* ===== USAGE ===== */ -}}
+{{- define "sectionUsage" -}}
+{{- $label := labelCommand .Command -}}
+
+Usage:
+{{- if hasSubcommands . }}
+  {{ $label }} [command]
+{{- end -}}
+
+{{- if hasCommand . }}
+  {{ $label }}
+  {{- if hasFlags .     }} [flag...]     {{- end -}}
+  {{- if hasArguments . }} [argument...] {{- end -}}
+{{- end -}}
+
+{{- end -}}
+
+{{- /* ===== SUBCOMMANDS ===== */ -}}
+{{- define "sectionSubcommands" -}}
+{{- $max := maxSubcommand . -}}
+
+Commands:
+{{- range .Subcommands }}
+  {{ printf "%-*s  %s" $max ( labelSubcommand . ) ( describeSubcommand . false ) }}
+{{- end -}}
+
+{{- end -}}
+
+{{- /* ===== FLAGS ===== */ -}}
+{{- define "sectionFlags" -}}
+{{- $max := maxFlag . -}}
+
+Flags:
+{{- range .Flags }}
+  {{ printf "%-*s  %s" $max ( labelFlag . ) ( describeFlag . false ) }}
+{{- end -}}
+
+{{- end -}}
+
+{{- /* ===== ARGUMENTS ===== */ -}}
+{{- define "sectionArguments" -}}
+{{- $max := maxArgument . -}}
+
+Arguments:
+{{- range .Arguments }}
+  {{ printf "%-*s  %s" $max ( labelArgument . ) ( describeArgument . false ) }}
+{{- end -}}
+
+{{- end -}}
+
+{{- /*
+================================================================================
+ DISPLAY
+================================================================================
+*/ -}}
+
+{{- $hasUsage := or ( hasCommand . ) ( hasSubcommands . ) -}}
+
+{{- template "sectionCommand" . -}} {{- "\n" -}}
+
+{{- if $hasUsage        -}} {{- "\n" -}} {{- template "sectionUsage" .       -}} {{- "\n" -}} {{- end -}}
+{{- if hasSubcommands . -}} {{- "\n" -}} {{- template "sectionSubcommands" . -}} {{- "\n" -}} {{- end -}}
+{{- if hasFlags .       -}} {{- "\n" -}} {{- template "sectionFlags" .       -}} {{- "\n" -}} {{- end -}}
+{{- if hasArguments .   -}} {{- "\n" -}} {{- template "sectionArguments" .   -}} {{- "\n" -}} {{- end -}}
