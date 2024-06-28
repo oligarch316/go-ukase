@@ -12,13 +12,13 @@ import (
 // Directive
 // =============================================================================
 
-type Directive interface {
-	UkaseRegister(State) error
-}
+type Directive interface{ UkaseRegister(State) error }
 
-type directive func(State) error
+type directiveFunc func(State) error
 
-func (d directive) UkaseRegister(state State) error { return d(state) }
+func NewDirective(directive func(State) error) Directive { return directiveFunc(directive) }
+
+func (df directiveFunc) UkaseRegister(state State) error { return df(state) }
 
 // =============================================================================
 // Rule
@@ -47,7 +47,7 @@ func NewInfo(info any) Info {
 
 func (i Info) Bind(target ...string) Directive {
 	dir := func(s State) error { return s.RegisterInfo(i.Value, target...) }
-	return directive(dir)
+	return directiveFunc(dir)
 }
 
 // =============================================================================
@@ -58,7 +58,7 @@ type Exec[Params any] func(context.Context, Input) error
 
 func (e Exec[Params]) Bind(target ...string) Directive {
 	dir := func(s State) error { return e.register(s, target) }
-	return directive(dir)
+	return directiveFunc(dir)
 }
 
 func (e Exec[Params]) register(state State, target []string) error {

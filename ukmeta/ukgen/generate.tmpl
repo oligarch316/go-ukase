@@ -1,0 +1,89 @@
+{{- /*********************************************************************** -}}
+    DEFINE
+{{- ***********************************************************************/ -}}
+
+{{- $ukgen  := .Core.Packages.Ukgen  -}}
+{{- $ukhelp := .Core.Packages.Ukhelp -}}
+{{- $ukinfo := .Core.Packages.Ukinfo -}}
+{{- $ukmeta := .Core.Packages.Ukmeta -}}
+
+{{- $EncodeHelp     := .Core.Names.EncoderDefault }}
+{{- $HelpEncoder    := .Core.Names.EncoderType }}
+{{- $NewHelpEncoder := .Core.Names.EncoderConstructor }}
+
+{{- /*********************************************************************** -}}
+    DISPLAY
+{{- ***********************************************************************/ -}}
+
+package {{ .Core.Names.Package }}
+
+import (
+{{- range .Imports }}
+    {{ printf "%s" . -}}
+{{ end }}
+)
+
+// =============================================================================
+// Parameter Type Mappings
+// =============================================================================
+
+var paramsMap = make({{ $ukgen }}.ParamsMap)
+
+func init() {
+{{- range .Params }}
+    {{ $ukgen }}.ParamsMapAdd[{{ .Type.Source }}, {{ .Type.Sink }}](paramsMap)
+{{- end }}
+}
+
+// =============================================================================
+// Help Encoder
+// =============================================================================
+
+var {{ $EncodeHelp }} = {{ $NewHelpEncoder }}({{ $ukinfo }}.Encode)
+
+type {{ $HelpEncoder }}[T any] func(info any) (description T, err error)
+
+func {{ $NewHelpEncoder }}[T any](encodeDescription func(any) (T, error)) {{ $HelpEncoder }}[T] {
+    return {{ $HelpEncoder }}[T](encodeDescription)
+}
+
+func (x {{ $HelpEncoder }}[T]) UkaseApplyHelp(c *{{ $ukhelp }}.Config) { c.Encode = x.Encode }
+
+func (x {{ $HelpEncoder }}[T]) Encode(in {{ $ukmeta }}.Input) (any, error) {
+    genInput := paramsMap.NewInput(in)
+    genEncoder := {{ $ukgen }}.Encoder[T](x)
+    return genEncoder.Encode(genInput)
+}
+
+// =============================================================================
+// Info Types
+// =============================================================================
+
+type flagInfo = {{ .Core.Types.FlagInfo }}
+type argumentInfo = {{ .Core.Types.ArgumentInfo }}
+
+// =============================================================================
+// Parameter Types
+// =============================================================================
+
+{{ range .Params }}
+type {{ .Type.Sink }} struct {
+{{- if .Inlines }}
+{{- range .Inlines }}
+    {{ printf "%s %s `ukidx:\"%d\"`" .FieldName .FieldType.Sink .FieldIndex }}
+{{- end }}
+{{- end }}
+
+{{- if .Flags }}
+{{- range .Flags }}
+    {{ printf "%s flagInfo `ukidx:\"%d\"`" .FieldName .FieldIndex }}
+{{- end }}
+{{- end }}
+
+{{- if .Arguments }}
+{{- range .Arguments }}
+    {{ printf "%s argumentInfo `ukidx:\"%d\"`" .FieldName .FieldIndex }}
+{{- end }}
+{{- end }}
+}
+{{ end -}}
