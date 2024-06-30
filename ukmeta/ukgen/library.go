@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/oligarch316/go-ukase/internal"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 	"github.com/oligarch316/go-ukase/ukmeta"
 	"github.com/oligarch316/go-ukase/ukmeta/ukhelp"
@@ -29,9 +30,6 @@ func (pm ParamsMap) NewInput(in ukmeta.Input) Input { return newInput(in, pm) }
 // =============================================================================
 // Field Index Mapping
 // =============================================================================
-
-// TODO: Use this constant as source of truth in template (rather than hardcode)
-const tagKeyIndex = "ukidx"
 
 type fieldIndexCache map[reflect.Type]map[int]int
 
@@ -59,7 +57,7 @@ func (fieldIndexCache) build(t reflect.Type) (map[int]int, error) {
 	for sinkIdx := 0; sinkIdx < t.NumField(); sinkIdx++ {
 		sinkField := t.Field(sinkIdx)
 
-		sinkTag, ok := sinkField.Tag.Lookup(tagKeyIndex)
+		sinkTag, ok := sinkField.Tag.Lookup(internal.TagKeyIndex)
 		if !ok {
 			continue
 		}
