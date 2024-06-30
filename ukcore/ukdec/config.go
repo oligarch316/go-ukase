@@ -4,7 +4,7 @@ import "github.com/oligarch316/go-ukase/ukcore/ukspec"
 
 var defaultConfig = Config{}
 
-type Option interface{ UkaseApplyEnc(*Config) }
+type Option interface{ UkaseApplyDec(*Config) }
 
 type Config struct {
 	// TODO: Document
@@ -14,7 +14,7 @@ type Config struct {
 func newConfig(opts []Option) Config {
 	config := defaultConfig
 	for _, opt := range opts {
-		opt.UkaseApplyEnc(&config)
+		opt.UkaseApplyDec(&config)
 	}
 	return config
 }

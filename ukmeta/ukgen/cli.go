@@ -67,12 +67,8 @@ type generateState struct {
 	generator *Generator
 }
 
-func (g *Generator) UkaseApply(config *ukcli.Config) {
-	middleware := func(s ukcli.State) ukcli.State {
-		return generateState{State: s, generator: g}
-	}
-
-	config.Middleware = append(config.Middleware, middleware)
+func (g *Generator) Middleware(s ukcli.State) ukcli.State {
+	return generateState{State: s, generator: g}
 }
 
 func (gs generateState) RegisterExec(exec ukcore.Exec, spec ukspec.Params, target ...string) error {

@@ -5,12 +5,10 @@ import (
 
 	"github.com/oligarch316/go-ukase/ukcli/ukinfo"
 	"github.com/oligarch316/go-ukase/ukmeta"
-	"github.com/oligarch316/go-ukase/ukmeta/ukhelp"
 )
 
 var (
 	pkgPathUkgen  = reflect.TypeFor[Config]().PkgPath()
-	pkgPathUkhelp = reflect.TypeFor[ukhelp.Config]().PkgPath()
 	pkgPathUkinfo = reflect.TypeFor[ukinfo.Any]().PkgPath()
 	pkgPathUkmeta = reflect.TypeFor[ukmeta.Input]().PkgPath()
 )
@@ -34,7 +32,6 @@ type coreNamesData struct {
 
 type corePackagesData struct {
 	Ukgen  string
-	Ukhelp string
 	Ukinfo string
 	Ukmeta string
 }
@@ -80,11 +77,6 @@ func (g *Generator) generateCorePackages() (corePackagesData, error) {
 		return corePackagesData{}, err
 	}
 
-	pkgUkhelp, err := g.loadImportName(pkgPathUkhelp)
-	if err != nil {
-		return corePackagesData{}, err
-	}
-
 	pkgUkinfo, err := g.loadImportName(pkgPathUkinfo)
 	if err != nil {
 		return corePackagesData{}, err
@@ -97,7 +89,6 @@ func (g *Generator) generateCorePackages() (corePackagesData, error) {
 
 	data := corePackagesData{
 		Ukgen:  pkgUkgen,
-		Ukhelp: pkgUkhelp,
 		Ukinfo: pkgUkinfo,
 		Ukmeta: pkgUkmeta,
 	}

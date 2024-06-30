@@ -1,6 +1,9 @@
 package ukcli
 
 import (
+	"log/slog"
+
+	"github.com/oligarch316/go-ukase/internal"
 	"github.com/oligarch316/go-ukase/ukcore/ukdec"
 	"github.com/oligarch316/go-ukase/ukcore/ukexec"
 	"github.com/oligarch316/go-ukase/ukcore/ukinit"
@@ -11,9 +14,12 @@ import (
 // Config
 // =============================================================================
 
-type Option interface{ UkaseApply(*Config) }
+type Option interface{ UkaseApplyCLI(*Config) }
 
 type Config struct {
+	// TODO: Document
+	Log *slog.Logger
+
 	// TODO: Document
 	Exec []ukexec.Option
 
@@ -33,7 +39,7 @@ type Config struct {
 func newConfig(opts []Option) Config {
 	config := cfgDefault
 	for _, opt := range opts {
-		opt.UkaseApply(&config)
+		opt.UkaseApplyCLI(&config)
 	}
 	return config
 }
@@ -42,4 +48,11 @@ func newConfig(opts []Option) Config {
 // Defaults
 // =============================================================================
 
-var cfgDefault = Config{}
+var cfgDefault = Config{
+	Log:        internal.LogDiscard,
+	Exec:       nil,
+	Decode:     nil,
+	Init:       nil,
+	Spec:       nil,
+	Middleware: nil,
+}

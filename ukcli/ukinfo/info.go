@@ -34,7 +34,7 @@ func Encode(info any) (Description, error) {
 }
 
 func Render(description Description, long bool) string {
-	if long {
+	if long && description.Long != "" {
 		return description.Long
 	}
 	return description.Short

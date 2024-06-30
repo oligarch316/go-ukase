@@ -161,6 +161,10 @@ func (p *parser) ConsumeFlags(specs map[string]ukspec.Flag) ([]ukcore.Flag, erro
 			continue
 		}
 
+		// TODO:
+		// We've been incorrectly treating this as an internal error.
+		// Malformed flags like '--x' or '-xxx' are still user input errors.
+
 		// Unexpected ⇒ do not consume, fail (internal error)
 		return flags, fmt.Errorf("internal ukase parse error: unexpected token kind %s", peekToken.Kind)
 	}

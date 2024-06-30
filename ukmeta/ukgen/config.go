@@ -1,8 +1,10 @@
 package ukgen
 
 import (
+	"log/slog"
 	"reflect"
 
+	"github.com/oligarch316/go-ukase/internal"
 	"github.com/oligarch316/go-ukase/ukcli/ukinfo"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
@@ -14,6 +16,7 @@ import (
 type Option interface{ UkaseApplyGen(*Config) }
 
 type Config struct {
+	Log   *slog.Logger
 	Spec  []ukspec.Option
 	Names ConfigNames
 	Types ConfigTypes
@@ -45,6 +48,8 @@ func newConfig(opts []Option) Config {
 // =============================================================================
 
 var cfgDefault = Config{
+	Log:   internal.LogDiscard,
+	Spec:  nil,
 	Names: cfgDefaultNames,
 	Types: cfgDefaultTypes,
 }

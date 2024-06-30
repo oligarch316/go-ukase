@@ -16,7 +16,7 @@ import (
 // Config
 // =============================================================================
 
-type Option interface{ UkaseApplyCore(*Config) }
+type Option interface{ UkaseApplyExec(*Config) }
 
 type Config struct {
 	// TODO: Document
@@ -38,7 +38,7 @@ type Config struct {
 func newConfig(opts []Option) Config {
 	config := cfgDefault
 	for _, opt := range opts {
-		opt.UkaseApplyCore(&config)
+		opt.UkaseApplyExec(&config)
 	}
 	return config
 }

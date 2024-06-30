@@ -17,6 +17,7 @@ import (
 type Option interface{ UkaseApplyHelp(*Config) }
 
 type Config struct {
+	Info    any
 	Prepare func(in ukcli.Input, refTarget []string) (ukmeta.Input, error)
 	Encode  func(in ukmeta.Input) (any, error)
 	Render  func(ctx context.Context, data any) error
@@ -35,6 +36,7 @@ func newConfig(opts []Option) Config {
 // =============================================================================
 
 var cfgDefault = Config{
+	Info:    "Show help information",
 	Prepare: cfgPrepare,
 	Encode:  cfgEncode,
 	Render:  cfgRender,

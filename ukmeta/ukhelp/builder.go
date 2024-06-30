@@ -14,13 +14,13 @@ func NewBuilder(opts ...Option) Builder {
 	return Builder{config: config}
 }
 
-func (b Builder) Auto(name string) ukcli.Option {
+func (b Builder) Auto(name string) func(ukcli.State) ukcli.State {
 	builder := ukmeta.NewBuilder(b.Build)
 	return builder.Auto(name)
 }
 
-func (b Builder) Build(refTarget ...string) ukcli.Exec[struct{}] {
-	return func(ctx context.Context, in ukcli.Input) error {
+func (b Builder) Build(refTarget ...string) (ukcli.Exec[struct{}], any) {
+	exec := func(ctx context.Context, in ukcli.Input) error {
 		helpInput, err := b.config.Prepare(in, refTarget)
 		if err != nil {
 			return err
@@ -33,4 +33,6 @@ func (b Builder) Build(refTarget ...string) ukcli.Exec[struct{}] {
 
 		return b.config.Render(ctx, helpData)
 	}
+
+	return exec, b.config.Info
 }

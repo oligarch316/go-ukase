@@ -8,6 +8,8 @@ import (
 	"github.com/oligarch316/go-ukase/ukcore/ukinit"
 )
 
+var directiveNoop directiveFunc = func(State) error { return nil }
+
 // =============================================================================
 // Directive
 // =============================================================================
@@ -57,6 +59,10 @@ func (i Info) Bind(target ...string) Directive {
 type Exec[Params any] func(context.Context, Input) error
 
 func (e Exec[Params]) Bind(target ...string) Directive {
+	if e == nil {
+		return directiveNoop
+	}
+
 	dir := func(s State) error { return e.register(s, target) }
 	return directiveFunc(dir)
 }
@@ -87,6 +93,10 @@ func NewHandler[Params any](handler func(context.Context, Params) error) Handler
 }
 
 func (h Handler[Params]) Bind(target ...string) Directive {
+	if h == nil {
+		return directiveNoop
+	}
+
 	exec := Exec[Params](h.exec)
 	return exec.Bind(target...)
 }

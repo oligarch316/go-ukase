@@ -8,35 +8,26 @@ import (
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
 
-type Builder[Params any] func(refTarget ...string) ukcli.Exec[Params]
+type Builder[Params any] func(refTarget ...string) (exec ukcli.Exec[Params], info any)
 
-func NewBuilder[Params any](builder func(...string) ukcli.Exec[Params]) Builder[Params] {
+func NewBuilder[Params any](builder func(...string) (ukcli.Exec[Params], any)) Builder[Params] {
 	return Builder[Params](builder)
 }
 
-func (b Builder[Params]) Auto(name string) ukcli.Option {
-	return autoBuilder[Params]{builder: b, name: name}
-}
-
-type autoBuilder[Params any] struct {
-	builder Builder[Params]
-	name    string
-}
-
-func (ab autoBuilder[Params]) UkaseApply(config *ukcli.Config) {
-	middleware := func(s ukcli.State) ukcli.State {
-		return &autoState[Params]{autoBuilder: ab, State: s}
+func (b Builder[Params]) Auto(name string) func(ukcli.State) ukcli.State {
+	return func(s ukcli.State) ukcli.State {
+		return &autoState[Params]{State: s, builder: b, name: name}
 	}
-
-	config.Middleware = append(config.Middleware, middleware)
 }
 
 type autoTree map[string]autoTree
 
 type autoState[Params any] struct {
-	autoBuilder[Params]
 	ukcli.State
-	memo autoTree
+
+	builder Builder[Params]
+	name    string
+	memo    autoTree
 }
 
 func (as *autoState[Params]) RegisterExec(exec ukcore.Exec, spec ukspec.Params, target ...string) error {
@@ -44,21 +35,42 @@ func (as *autoState[Params]) RegisterExec(exec ukcore.Exec, spec ukspec.Params, 
 		return err
 	}
 
-	return as.registerHelp(target)
+	return as.registerMeta(target)
 }
 
-func (as *autoState[Params]) registerHelp(target []string) error {
+func (as *autoState[Params]) registerMeta(target []string) error {
 	for _, path := range as.sift(target) {
-		helpExec := as.builder(path...)
-		helpTarget := append(path, as.name)
-		helpDirective := helpExec.Bind(helpTarget...)
+		metaTarget := append(path, as.name)
+		exec, info := as.builder(path...)
 
-		if err := helpDirective.UkaseRegister(as.State); err != nil {
+		if err := as.registerMetaExec(exec, metaTarget); err != nil {
+			return err
+		}
+
+		if err := as.registerMetaInfo(info, metaTarget); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (as *autoState[Params]) registerMetaExec(exec ukcli.Exec[Params], target []string) error {
+	if exec == nil {
+		return nil
+	}
+
+	metaExec := exec.Bind(target...)
+	return metaExec.UkaseRegister(as.State)
+}
+
+func (as *autoState[Params]) registerMetaInfo(info any, target []string) error {
+	if info == nil {
+		return nil
+	}
+
+	metaInfo := ukcli.NewInfo(info).Bind(target...)
+	return metaInfo.UkaseRegister(as.State)
 }
 
 // Ensure each sub-path of the given target is marked as visited.

@@ -3,7 +3,6 @@
 {{- ***********************************************************************/ -}}
 
 {{- $ukgen  := .Core.Packages.Ukgen  -}}
-{{- $ukhelp := .Core.Packages.Ukhelp -}}
 {{- $ukinfo := .Core.Packages.Ukinfo -}}
 {{- $ukmeta := .Core.Packages.Ukmeta -}}
 
@@ -39,15 +38,13 @@ func init() {
 // Help Encoder
 // =============================================================================
 
-var {{ $EncodeHelp }} = {{ $NewHelpEncoder }}({{ $ukinfo }}.Encode)
+var {{ $EncodeHelp }} = {{ $NewHelpEncoder }}({{ $ukinfo }}.Encode).Encode
 
 type {{ $HelpEncoder }}[T any] func(info any) (description T, err error)
 
 func {{ $NewHelpEncoder }}[T any](encodeDescription func(any) (T, error)) {{ $HelpEncoder }}[T] {
     return {{ $HelpEncoder }}[T](encodeDescription)
 }
-
-func (x {{ $HelpEncoder }}[T]) UkaseApplyHelp(c *{{ $ukhelp }}.Config) { c.Encode = x.Encode }
 
 func (x {{ $HelpEncoder }}[T]) Encode(in {{ $ukmeta }}.Input) (any, error) {
     genInput := paramsMap.NewInput(in)
@@ -70,7 +67,7 @@ type argumentInfo = {{ .Core.Types.ArgumentInfo }}
 type {{ .Type.Sink }} struct {
 {{- if .Inlines }}
 {{- range .Inlines }}
-    {{ printf "%s %s `ukidx:\"%d\"`" .FieldName .FieldType.Sink .FieldIndex }}
+    {{ printf "%s %s `ukidx:\"%d\" ukase:\"inline\"`" .FieldName .FieldType.Sink .FieldIndex }}
 {{- end }}
 {{- end }}
 
