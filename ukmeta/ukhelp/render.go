@@ -1,7 +1,6 @@
 package ukhelp
 
 import (
-	"fmt"
 	"io"
 	"strings"
 	"text/template"
@@ -137,16 +136,6 @@ func (RenderFuncs[T]) labelFlag(o OutputFlag[T]) string {
 }
 
 func (RenderFuncs[T]) labelArgument(o OutputArgument[T]) string {
-	switch start, end := o.IndexStart, o.IndexEnd; {
-	case start == -1 && end == -1:
-		return "..."
-	case start == -1:
-		return fmt.Sprintf("...%d", end)
-	case end == -1:
-		return fmt.Sprintf("%d...", start)
-	case (end - start) < 2:
-		return fmt.Sprintf("%d", start)
-	default:
-		return fmt.Sprintf("%d...%d", start, end)
-	}
+	// TODO: More human friendly display than half open range???
+	return strings.Replace(o.Position.String(), ":", "...", 1)
 }

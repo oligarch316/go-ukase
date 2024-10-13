@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/oligarch316/go-ukase/internal"
+	"github.com/oligarch316/go-ukase/internal/ilog"
 	"github.com/oligarch316/go-ukase/ukcli"
 	"github.com/oligarch316/go-ukase/ukmeta/ukgen"
 	"github.com/oligarch316/go-ukase/ukmeta/ukhelp"
@@ -17,7 +17,7 @@ import (
 // =============================================================================
 
 var cfgDefault = Config{
-	Log:            internal.LogDiscard,
+	Log:            ilog.Discard,
 	HelpCommand:    "help",
 	InputProgram:   os.Args[0],
 	InputArguments: os.Args[1:],

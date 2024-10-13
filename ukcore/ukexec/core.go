@@ -2,10 +2,12 @@ package ukexec
 
 import "github.com/oligarch316/go-ukase/ukcore/ukspec"
 
+var paramsSpecEmpty, _ = ukspec.ParametersFor[struct{}]()
+
 type Meta struct {
 	Exec bool
 	Info any
-	Spec ukspec.Params
+	Spec ukspec.Parameters
 
 	children map[string]*muxNode
 }
@@ -14,7 +16,7 @@ func newMeta(node *muxNode) Meta {
 	meta := Meta{
 		Exec:     node.exec != nil,
 		Info:     nil,
-		Spec:     ukspec.Empty,
+		Spec:     paramsSpecEmpty,
 		children: node.children,
 	}
 

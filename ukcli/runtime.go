@@ -62,12 +62,12 @@ var _ State = (*state)(nil)
 type State interface {
 	// Execution time utilities
 	loadMeta(target []string) (ukexec.Meta, error)
-	loadSpec(t reflect.Type) (ukspec.Params, error)
+	loadSpec(t reflect.Type) (ukspec.Parameters, error)
 	runDecode(ukcore.Input, any) error
 	runInit(any) error
 
 	// Registration time utilities
-	RegisterExec(exec ukcore.Exec, spec ukspec.Params, target ...string) error
+	RegisterExec(exec ukcore.Exec, spec ukspec.Parameters, target ...string) error
 	RegisterInfo(info any, target ...string) error
 	RegisterRule(rule ukinit.Rule)
 }
@@ -90,8 +90,8 @@ func (s *state) loadMeta(target []string) (ukexec.Meta, error) {
 	return s.execMux.Meta(target...)
 }
 
-func (s *state) loadSpec(t reflect.Type) (ukspec.Params, error) {
-	return ukspec.New(t, s.config.Spec...)
+func (s *state) loadSpec(t reflect.Type) (ukspec.Parameters, error) {
+	return ukspec.NewParameters(t, s.config.Spec...)
 }
 
 func (s *state) runDecode(i ukcore.Input, v any) error {
@@ -100,7 +100,7 @@ func (s *state) runDecode(i ukcore.Input, v any) error {
 }
 
 func (s *state) runInit(v any) error {
-	spec, err := ukspec.Of(v, s.config.Spec...)
+	spec, err := ukspec.ParametersOf(v, s.config.Spec...)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (s *state) runInit(v any) error {
 	return s.ruleSet.Process(spec, v)
 }
 
-func (s *state) RegisterExec(exec ukcore.Exec, spec ukspec.Params, target ...string) error {
+func (s *state) RegisterExec(exec ukcore.Exec, spec ukspec.Parameters, target ...string) error {
 	return s.execMux.RegisterExec(exec, spec, target...)
 }
 

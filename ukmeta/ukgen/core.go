@@ -3,10 +3,12 @@ package ukgen
 import (
 	"reflect"
 
-	"github.com/oligarch316/go-ukase/internal"
+	"github.com/oligarch316/go-ukase/internal/ispec"
 	"github.com/oligarch316/go-ukase/ukcli/ukinfo"
 	"github.com/oligarch316/go-ukase/ukmeta"
 )
+
+const tagKeyIndex = "ukidx"
 
 var (
 	pkgPathUkgen  = reflect.TypeFor[Config]().PkgPath()
@@ -71,8 +73,8 @@ func (g *Generator) generateCoreNames() coreNamesData {
 		EncoderConstructor: g.config.Names.EncoderConstructor,
 		EncoderDefault:     g.config.Names.EncoderDefault,
 		EncoderType:        g.config.Names.EncoderType,
-		TagKeyIndex:        internal.TagKeyIndex,
-		TagKeyInline:       internal.TagKeyInline,
+		TagKeyIndex:        tagKeyIndex,
+		TagKeyInline:       ispec.TagKeyInline,
 	}
 }
 

@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/oligarch316/go-ukase/internal"
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 	"github.com/oligarch316/go-ukase/ukmeta"
 	"github.com/oligarch316/go-ukase/ukmeta/ukhelp"
 )
@@ -57,7 +55,7 @@ func (fieldIndexCache) build(t reflect.Type) (map[int]int, error) {
 	for sinkIdx := 0; sinkIdx < t.NumField(); sinkIdx++ {
 		sinkField := t.Field(sinkIdx)
 
-		sinkTag, ok := sinkField.Tag.Lookup(internal.TagKeyIndex)
+		sinkTag, ok := sinkField.Tag.Lookup(tagKeyIndex)
 		if !ok {
 			continue
 		}
@@ -201,7 +199,7 @@ func (e Encoder[T]) EncodeFlags(in Input) ([]ukhelp.OutputFlag[T], error) {
 			return nil, err
 		}
 
-		names := slices.Clone(spec.FlagNames)
+		names := slices.Clone(spec.Names)
 		super.SortFlagNames(names)
 
 		item := ukhelp.OutputFlag[T]{Description: description, Names: names}
@@ -215,14 +213,9 @@ func (e Encoder[T]) EncodeFlags(in Input) ([]ukhelp.OutputFlag[T], error) {
 func (e Encoder[T]) EncodeArguments(in Input) ([]ukhelp.OutputArgument[T], error) {
 	var list []ukhelp.OutputArgument[T]
 
-	// >===== TODO
-	var argumentSpecs []ukspec.Args
-	if tmp := in.MetaReference().Spec.Args; tmp != nil {
-		argumentSpecs = []ukspec.Args{*tmp}
-	}
-	// <=====
+	super := e.super()
 
-	for _, spec := range argumentSpecs {
+	for _, spec := range in.MetaReference().Spec.Arguments {
 		info, err := in.MetaInfo(spec.FieldIndex)
 		if err != nil {
 			return nil, err
@@ -233,18 +226,10 @@ func (e Encoder[T]) EncodeArguments(in Input) ([]ukhelp.OutputArgument[T], error
 			return nil, err
 		}
 
-		// TODO
-		indexStart, indexEnd := -1, -1
-
-		item := ukhelp.OutputArgument[T]{
-			Description: description,
-			IndexStart:  indexStart,
-			IndexEnd:    indexEnd,
-		}
-
+		item := ukhelp.OutputArgument[T]{Description: description, Position: spec.Position}
 		list = append(list, item)
 	}
 
-	e.super().SortArguments(list)
+	super.SortArguments(list)
 	return list, nil
 }

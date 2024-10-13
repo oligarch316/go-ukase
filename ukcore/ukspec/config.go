@@ -1,30 +1,34 @@
 package ukspec
 
+import (
+	"log/slog"
+
+	"github.com/oligarch316/go-ukase/internal/ilog"
+	"github.com/oligarch316/go-ukase/internal/ispec"
+)
+
 // =============================================================================
 // Config
 // =============================================================================
-
-var defaultConfig = Config{
-	ElideBoolType:          true,
-	ElideIsBoolFlag:        false,
-	ElideDefaultConsumable: defaultConsumable,
-}
 
 type Option interface{ UkaseApplySpec(*Config) }
 
 type Config struct {
 	// TODO: Document
-	ElideBoolType bool
+	Log *slog.Logger
 
 	// TODO: Document
-	ElideIsBoolFlag bool
+	ElideAllowBoolType bool
 
 	// TODO: Document
-	ElideDefaultConsumable func(string) bool
+	ElideAllowIsBoolFlag bool
+
+	// TODO: Document
+	ElideConsumable func(string) bool
 }
 
 func newConfig(opts []Option) Config {
-	config := defaultConfig
+	config := cfgDefault
 	for _, opt := range opts {
 		opt.UkaseApplySpec(&config)
 	}
@@ -32,20 +36,18 @@ func newConfig(opts []Option) Config {
 }
 
 // =============================================================================
-// Consumable
+// Defaults
 // =============================================================================
 
-var defaultConsumable = ConsumableSet(
+var cfgDefault = Config{
+	Log:                  ilog.Discard,
+	ElideAllowBoolType:   true,
+	ElideAllowIsBoolFlag: false,
+	ElideConsumable:      cfgElideConsumable,
+}
+
+var cfgElideConsumable = ispec.ConsumableSet(
 	"true", "false",
 	"True", "False",
 	"TRUE", "FALSE",
 )
-
-func ConsumableSet(valid ...string) func(string) bool {
-	set := make(map[string]struct{})
-	for _, item := range valid {
-		set[item] = struct{}{}
-	}
-
-	return func(s string) (ok bool) { _, ok = set[s]; return }
-}

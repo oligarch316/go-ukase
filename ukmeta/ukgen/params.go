@@ -42,11 +42,11 @@ type paramsTypeData struct{ Source, Sink typeData }
 // Load
 // =============================================================================
 
-type paramsStore map[reflect.Type]ukspec.Params
+type paramsStore map[reflect.Type]ukspec.Parameters
 
 func newParamsStore() paramsStore { return make(paramsStore) }
 
-func (g *Generator) loadParams(spec ukspec.Params) error {
+func (g *Generator) loadParams(spec ukspec.Parameters) error {
 	if _, exists := g.params[spec.Type]; exists {
 		return nil
 	}
@@ -63,7 +63,7 @@ func (g *Generator) loadParams(spec ukspec.Params) error {
 }
 
 func (g *Generator) loadParamsInline(inlineSpec ukspec.Inline) error {
-	paramsSpec, err := ukspec.New(inlineSpec.Type, g.config.Spec...)
+	paramsSpec, err := ukspec.NewParameters(inlineSpec.FieldType, g.config.Spec...)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (g *Generator) generateParams() ([]paramsData, error) {
 	return list, nil
 }
 
-func (g *Generator) generateParamsType(spec ukspec.Params) (paramsTypeData, bool, error) {
+func (g *Generator) generateParamsType(spec ukspec.Parameters) (paramsTypeData, bool, error) {
 	source, err := g.loadImport(spec.Type)
 	if err != nil {
 		return paramsTypeData{}, true, err
@@ -139,7 +139,7 @@ func (g *Generator) generateParamsType(spec ukspec.Params) (paramsTypeData, bool
 	return data, true, nil
 }
 
-func (g *Generator) generateParamsInlines(spec ukspec.Params) ([]paramsInlineData, error) {
+func (g *Generator) generateParamsInlines(spec ukspec.Parameters) ([]paramsInlineData, error) {
 	var list []paramsInlineData
 
 	for _, inlineSpec := range spec.Inlines {
@@ -148,12 +148,12 @@ func (g *Generator) generateParamsInlines(spec ukspec.Params) ([]paramsInlineDat
 			continue
 		}
 
-		fieldSourceType, err := g.loadImport(inlineSpec.Type)
+		fieldSourceType, err := g.loadImport(inlineSpec.FieldType)
 		if err != nil {
 			return nil, err
 		}
 
-		fieldSinkType := g.parseParamsSinkType(inlineSpec.Type, fieldSourceType)
+		fieldSinkType := g.parseParamsSinkType(inlineSpec.FieldType, fieldSourceType)
 
 		item := paramsInlineData{
 			FieldName:  inlineSpec.FieldName,
@@ -174,7 +174,7 @@ func (g *Generator) generateParamsInlines(spec ukspec.Params) ([]paramsInlineDat
 	return list, nil
 }
 
-func (g *Generator) generateParamsFlags(spec ukspec.Params) []paramsFlagData {
+func (g *Generator) generateParamsFlags(spec ukspec.Parameters) []paramsFlagData {
 	var list []paramsFlagData
 
 	for _, flagSpec := range spec.Flags {
@@ -194,17 +194,10 @@ func (g *Generator) generateParamsFlags(spec ukspec.Params) []paramsFlagData {
 	return list
 }
 
-func (g *Generator) generateParamsArguments(spec ukspec.Params) []paramsArgumentData {
+func (g *Generator) generateParamsArguments(spec ukspec.Parameters) []paramsArgumentData {
 	var list []paramsArgumentData
 
-	// >===== TODO
-	var argumentSpecs []ukspec.Args
-	if tmp := spec.Args; tmp != nil {
-		argumentSpecs = []ukspec.Args{*tmp}
-	}
-	// <=====
-
-	for _, argumentSpec := range argumentSpecs {
+	for _, argumentSpec := range spec.Arguments {
 		fieldIndex, valid := g.parseParamsFieldIndex(argumentSpec.FieldIndex)
 		if !valid {
 			continue

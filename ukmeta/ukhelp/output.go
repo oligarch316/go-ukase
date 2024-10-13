@@ -1,5 +1,7 @@
 package ukhelp
 
+import "github.com/oligarch316/go-ukase/ukcore/ukspec"
+
 type Output[T any] struct {
 	Command     OutputCommand[T]
 	Subcommands []OutputSubcommand[T]
@@ -21,11 +23,10 @@ type OutputSubcommand[T any] struct {
 
 type OutputFlag[T any] struct {
 	Description T
-	Names       []string
+	Names       ukspec.FlagNames
 }
 
 type OutputArgument[T any] struct {
 	Description T
-	IndexStart  int
-	IndexEnd    int
+	Position    ukspec.ArgumentPosition
 }

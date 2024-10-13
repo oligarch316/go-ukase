@@ -14,7 +14,7 @@ var (
 
 type ErrorExecConflict struct {
 	Target           []string
-	Original, Update ukspec.Params
+	Original, Update ukspec.Parameters
 	err              error
 }
 
