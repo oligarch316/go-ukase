@@ -71,7 +71,7 @@ func (g *Generator) Middleware(s ukcli.State) ukcli.State {
 	return generateState{State: s, generator: g}
 }
 
-func (gs generateState) RegisterExec(exec ukcore.Exec, spec ukspec.Params, target ...string) error {
+func (gs generateState) RegisterExec(exec ukcore.Exec, spec ukspec.Parameters, target ...string) error {
 	if err := gs.State.RegisterExec(exec, spec, target...); err != nil {
 		return err
 	}

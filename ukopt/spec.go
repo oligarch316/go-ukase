@@ -39,3 +39,22 @@ func (o Spec) UkaseApplyCLI(c *ukcli.Config) {
 // =============================================================================
 // Specific
 // =============================================================================
+
+// TODO:
+
+// func SpecElideBoolType(allow bool) Spec {
+// 	return func(c *ukspec.Config) { c.ElideAllowBoolType = allow }
+// }
+
+// func SpecElideIsBoolFlag(allow bool) Spec {
+// 	return func(c *ukspec.Config) { c.ElideAllowIsBoolFlag = allow }
+// }
+
+// func SpecElideConsumable(consumable func(string) bool) Spec {
+// 	return func(c *ukspec.Config) { c.ElideConsumable = consumable }
+// }
+
+// func SpecElideConsumableSet(valid ...string) Spec {
+// 	consumable := internal.ConsumableSet(valid...)
+// 	return SpecElideConsumable(consumable)
+// }

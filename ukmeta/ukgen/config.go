@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"reflect"
 
-	"github.com/oligarch316/go-ukase/internal"
+	"github.com/oligarch316/go-ukase/internal/ilog"
 	"github.com/oligarch316/go-ukase/ukcli/ukinfo"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
@@ -48,7 +48,7 @@ func newConfig(opts []Option) Config {
 // =============================================================================
 
 var cfgDefault = Config{
-	Log:   internal.LogDiscard,
+	Log:   ilog.Discard,
 	Spec:  nil,
 	Names: cfgDefaultNames,
 	Types: cfgDefaultTypes,

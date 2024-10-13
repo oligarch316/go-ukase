@@ -81,7 +81,7 @@ func (e Encoder[T]) EncodeFlags(in ukmeta.Input) ([]OutputFlag[T], error) {
 	var list []OutputFlag[T]
 
 	for _, spec := range in.MetaReference().Spec.Flags {
-		names := slices.Clone(spec.FlagNames)
+		names := slices.Clone(spec.Names)
 		e.SortFlagNames(names)
 
 		item := OutputFlag[T]{Names: names}
@@ -95,18 +95,8 @@ func (e Encoder[T]) EncodeFlags(in ukmeta.Input) ([]OutputFlag[T], error) {
 func (e Encoder[T]) EncodeArguments(in ukmeta.Input) ([]OutputArgument[T], error) {
 	var list []OutputArgument[T]
 
-	// >===== TODO
-	var argumentSpecs []ukspec.Args
-	if tmp := in.MetaReference().Spec.Args; tmp != nil {
-		argumentSpecs = []ukspec.Args{*tmp}
-	}
-	// <=====
-
-	for range argumentSpecs {
-		// TODO
-		indexStart, indexEnd := -1, -1
-
-		item := OutputArgument[T]{IndexStart: indexStart, IndexEnd: indexEnd}
+	for _, spec := range in.MetaReference().Spec.Arguments {
+		item := OutputArgument[T]{Position: spec.Position}
 		list = append(list, item)
 	}
 
@@ -132,10 +122,23 @@ func (e Encoder[T]) SortFlags(list []OutputFlag[T]) {
 
 func (e Encoder[T]) SortArguments(list []OutputArgument[T]) {
 	// Sort by position
-	// TODO
+	compare := func(a, b OutputArgument[T]) int {
+		switch {
+		case a.Position.Low == nil && b.Position.Low == nil:
+			return 0
+		case a.Position.Low == nil:
+			return -1
+		case b.Position.Low == nil:
+			return +1
+		default:
+			return cmp.Compare(*a.Position.Low, *b.Position.Low)
+		}
+	}
+
+	slices.SortFunc(list, compare)
 }
 
-func (e Encoder[T]) SortFlagNames(list []string) {
+func (e Encoder[T]) SortFlagNames(list ukspec.FlagNames) {
 	// Sort by length of name
 	compare := func(a, b string) int { return len(a) - len(b) }
 	slices.SortFunc(list, compare)

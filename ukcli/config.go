@@ -3,7 +3,7 @@ package ukcli
 import (
 	"log/slog"
 
-	"github.com/oligarch316/go-ukase/internal"
+	"github.com/oligarch316/go-ukase/internal/ilog"
 	"github.com/oligarch316/go-ukase/ukcore/ukdec"
 	"github.com/oligarch316/go-ukase/ukcore/ukexec"
 	"github.com/oligarch316/go-ukase/ukcore/ukinit"
@@ -49,7 +49,7 @@ func newConfig(opts []Option) Config {
 // =============================================================================
 
 var cfgDefault = Config{
-	Log:        internal.LogDiscard,
+	Log:        ilog.Discard,
 	Exec:       nil,
 	Decode:     nil,
 	Init:       nil,

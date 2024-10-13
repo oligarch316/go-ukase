@@ -38,6 +38,6 @@ type gentimeState struct {
 	registerErr error
 }
 
-func (gs gentimeState) RegisterExec(_ ukcore.Exec, _ ukspec.Params, _ ...string) error {
+func (gs gentimeState) RegisterExec(_ ukcore.Exec, _ ukspec.Parameters, _ ...string) error {
 	return gs.registerErr
 }

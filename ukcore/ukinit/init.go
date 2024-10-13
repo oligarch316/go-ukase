@@ -49,7 +49,7 @@ func NewRuleSet(opts ...Option) *RuleSet {
 	}
 }
 
-func (rs *RuleSet) Process(spec ukspec.Params, v any) error {
+func (rs *RuleSet) Process(spec ukspec.Parameters, v any) error {
 	paramsVal, err := ukcore.NewParamsValue(v)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func (rs RuleSet) processValue(val reflect.Value) error {
 }
 
 func (RuleSet) loadInline(paramsVal ukcore.ParamsValue, index []int) (reflect.Value, error) {
-	// Load the relevant field. Intermediate field constructed automatically.
+	// Load the relevant field. Intermediate fields constructed automatically.
 	inlineVal := paramsVal.EnsureFieldByIndex(index)
 
 	// Ensure the result is a pointer, using `.Addr()` if necessary
@@ -124,8 +124,9 @@ func (RuleSet) loadInline(paramsVal ukcore.ParamsValue, index []int) (reflect.Va
 }
 
 func (RuleSet) orderInline(a, b ukspec.Inline) int {
-	tierA, tierB := len(a.FieldIndex), len(b.FieldIndex)
-	switch {
+	// TODO: Document bottom-up (DFS-esq) intention
+
+	switch tierA, tierB := len(a.FieldIndex), len(b.FieldIndex); {
 	case tierA > tierB:
 		return -1
 	case tierA < tierB:

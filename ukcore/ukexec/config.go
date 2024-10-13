@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/oligarch316/go-ukase/internal"
+	"github.com/oligarch316/go-ukase/internal/ilog"
 	"github.com/oligarch316/go-ukase/ukcore"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
@@ -26,7 +26,7 @@ type Config struct {
 	ExecUnspecified ukcore.Exec
 
 	// TODO: Document
-	ExecConflict func(original, update ukspec.Params) (overwrite bool, err error)
+	ExecConflict func(original, update ukspec.Parameters) (overwrite bool, err error)
 
 	// TODO: Document
 	InfoConflict func(original, update any) (overwrite bool, err error)
@@ -48,7 +48,7 @@ func newConfig(opts []Option) Config {
 // =============================================================================
 
 var cfgDefault = Config{
-	Log:             internal.LogDiscard,
+	Log:             ilog.Discard,
 	ExecUnspecified: cfgExecUnspecified,
 	ExecConflict:    cfgExecConflict,
 	InfoConflict:    cfgInfoConflict,
@@ -59,7 +59,7 @@ func cfgExecUnspecified(_ context.Context, i ukcore.Input) error {
 	return fmt.Errorf("unspecified target '%s'", strings.Join(i.Target, " "))
 }
 
-func cfgExecConflict(_, _ ukspec.Params) (bool, error) {
+func cfgExecConflict(_, _ ukspec.Parameters) (bool, error) {
 	return false, errors.New("exec already exists")
 }
 

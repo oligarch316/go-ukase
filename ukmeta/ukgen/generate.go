@@ -71,7 +71,7 @@ type data struct {
 // Load
 // =============================================================================
 
-func (g *Generator) load(spec ukspec.Params) error { return g.loadParams(spec) }
+func (g *Generator) load(spec ukspec.Parameters) error { return g.loadParams(spec) }
 
 // =============================================================================
 // Generate

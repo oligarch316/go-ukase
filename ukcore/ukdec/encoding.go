@@ -2,6 +2,7 @@ package ukdec
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/oligarch316/go-ukase/ukcore"
@@ -50,8 +51,8 @@ func (Decoder) loadValue(v any) (ukcore.ParamsValue, error) {
 	return paramsVal, err
 }
 
-func (d Decoder) loadSpec(paramsVal ukcore.ParamsValue) (ukspec.Params, error) {
-	spec, err := ukspec.New(paramsVal.Type(), d.config.Spec...)
+func (d Decoder) loadSpec(paramsVal ukcore.ParamsValue) (ukspec.Parameters, error) {
+	spec, err := ukspec.NewParameters(paramsVal.Type(), d.config.Spec...)
 	if err != nil {
 		// TODO: Wrap error appropriately
 	}
@@ -59,8 +60,8 @@ func (d Decoder) loadSpec(paramsVal ukcore.ParamsValue) (ukspec.Params, error) {
 	return spec, err
 }
 
-func (d Decoder) decodeFlag(paramsVal ukcore.ParamsValue, spec ukspec.Params, flag ukcore.Flag) error {
-	flagSpec, ok := spec.FlagIndex[flag.Name]
+func (d Decoder) decodeFlag(paramsVal ukcore.ParamsValue, spec ukspec.Parameters, flag ukcore.Flag) error {
+	flagSpec, ok := spec.LookupFlag(flag.Name)
 	if !ok {
 		return decodeErr(paramsVal.Value).flagName(flag)
 	}
@@ -78,19 +79,18 @@ func (d Decoder) decodeFlag(paramsVal ukcore.ParamsValue, spec ukspec.Params, fl
 	return nil
 }
 
-func (d Decoder) decodeArgs(paramsVal ukcore.ParamsValue, spec ukspec.Params, args []string) error {
-	switch {
-	case len(args) == 0:
-		return nil
-	case spec.Args == nil:
-		return errors.New("[TODO decodeArgs] have args but not spec")
-	}
+func (d Decoder) decodeArgs(paramsVal ukcore.ParamsValue, spec ukspec.Parameters, args []string) error {
+	for pos, arg := range args {
+		// TODO: Use `Position` field from ukcore.Argument type
+		argSpec, ok := spec.LookupArgument(pos)
+		if !ok {
+			return fmt.Errorf("[TODO decodeArgs] invalid argument position '%d'", pos)
+		}
 
-	argsVal := paramsVal.EnsureFieldByIndex(spec.Args.FieldIndex)
+		fieldVal := paramsVal.EnsureFieldByIndex(argSpec.FieldIndex)
 
-	for _, arg := range args {
-		if err := decode(argsVal, arg); err != nil {
-			return err
+		if err := decode(fieldVal, arg); err != nil {
+			return fmt.Errorf("[TODO decodeArgs] decode error: %w", err)
 		}
 	}
 

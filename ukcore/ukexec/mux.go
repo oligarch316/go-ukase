@@ -24,7 +24,7 @@ func New(opts ...Option) *Mux {
 type muxNode struct {
 	exec ukcore.Exec
 	info any
-	spec *ukspec.Params
+	spec *ukspec.Parameters
 
 	children map[string]*muxNode
 	flags    map[string]ukspec.Flag
@@ -41,19 +41,15 @@ func newMuxNode() *muxNode {
 // Write
 // =============================================================================
 
-func (m *Mux) RegisterExec(exec ukcore.Exec, spec ukspec.Params, target ...string) error {
-	m.config.Log.Debug(
-		"registering exec",
-		"target", target,
-		"paramsType", spec.Type,
-	)
+func (m *Mux) RegisterExec(exec ukcore.Exec, spec ukspec.Parameters, target ...string) error {
+	m.config.Log.Debug("registering exec", "target", target, "specType", spec.Type)
 
-	if err := m.validateFlags(m.root, target, spec.FlagIndex); err != nil {
+	if err := m.validateFlags(m.root, target, spec.Flags); err != nil {
 		return err
 	}
 
 	node := m.root
-	m.updateFlags(node, spec.FlagIndex)
+	m.updateFlags(node, spec.Flags)
 
 	for _, name := range target {
 		child, ok := node.children[name]
@@ -63,18 +59,14 @@ func (m *Mux) RegisterExec(exec ukcore.Exec, spec ukspec.Params, target ...strin
 		}
 
 		node = child
-		m.updateFlags(node, spec.FlagIndex)
+		m.updateFlags(node, spec.Flags)
 	}
 
 	return m.updateExec(node, target, exec, spec)
 }
 
 func (m *Mux) RegisterInfo(info any, target ...string) error {
-	m.config.Log.Debug(
-		"registering info",
-		"target", target,
-		"infoType", fmt.Sprintf("%T", info),
-	)
+	m.config.Log.Debug("registering info", "target", target, "infoType", fmt.Sprintf("%T", info))
 
 	node := m.root
 
@@ -91,7 +83,7 @@ func (m *Mux) RegisterInfo(info any, target ...string) error {
 	return m.updateInfo(node, target, info)
 }
 
-func (m *Mux) updateExec(node *muxNode, target []string, exec ukcore.Exec, spec ukspec.Params) error {
+func (m *Mux) updateExec(node *muxNode, target []string, exec ukcore.Exec, spec ukspec.Parameters) error {
 	if node.spec == nil {
 		node.exec, node.spec = exec, &spec
 		return nil
@@ -127,24 +119,28 @@ func (m *Mux) updateInfo(node *muxNode, target []string, info any) error {
 	return nil
 }
 
-func (Mux) updateFlags(node *muxNode, updates map[string]ukspec.Flag) {
-	for name, update := range updates {
-		node.flags[name] = update
+func (Mux) updateFlags(node *muxNode, updates []ukspec.Flag) {
+	for _, update := range updates {
+		for _, name := range update.Names {
+			node.flags[name] = update
+		}
 	}
 }
 
-func (m *Mux) validateFlags(node *muxNode, target []string, flags map[string]ukspec.Flag) error {
+func (m *Mux) validateFlags(node *muxNode, target []string, flags []ukspec.Flag) error {
 	var errs []error
 
-	for name, update := range flags {
-		original, conflict := node.flags[name]
-		if !conflict {
-			continue
-		}
+	for _, update := range flags {
+		for _, name := range update.Names {
+			original, conflict := node.flags[name]
+			if !conflict {
+				continue
+			}
 
-		if err := m.config.FlagConflict(original, update); err != nil {
-			err = ErrorFlagConflict{Target: target, Name: name, Original: original, Update: update, err: err}
-			errs = append(errs, err)
+			if err := m.config.FlagConflict(original, update); err != nil {
+				err = ErrorFlagConflict{Target: target, Name: name, Original: original, Update: update, err: err}
+				errs = append(errs, err)
+			}
 		}
 	}
 

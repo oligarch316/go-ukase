@@ -2,13 +2,23 @@
     DEFINE
 {{- ***********************************************************************/ -}}
 
+{{- /* Packages */ -}}
 {{- $ukgen  := .Core.Packages.Ukgen  -}}
 {{- $ukinfo := .Core.Packages.Ukinfo -}}
 {{- $ukmeta := .Core.Packages.Ukmeta -}}
 
-{{- $EncodeHelp     := .Core.Names.EncoderDefault }}
-{{- $HelpEncoder    := .Core.Names.EncoderType }}
-{{- $NewHelpEncoder := .Core.Names.EncoderConstructor }}
+{{- /* Encoder Names */ -}}
+{{- $EncodeHelp     := .Core.Names.EncoderDefault     -}}
+{{- $HelpEncoder    := .Core.Names.EncoderType        -}}
+{{- $NewHelpEncoder := .Core.Names.EncoderConstructor -}}
+
+{{- /* Info Types */ -}}
+{{- $FlagInfo     := .Core.Types.FlagInfo     -}}
+{{- $ArgumentInfo := .Core.Types.ArgumentInfo -}}
+
+{{- /* Tag Keys */ -}}
+{{- $tagKeyIndex  := .Core.Names.TagKeyIndex  -}}
+{{- $tagKeyInline := .Core.Names.TagKeyInline -}}
 
 {{- /*********************************************************************** -}}
     DISPLAY
@@ -53,13 +63,6 @@ func (x {{ $HelpEncoder }}[T]) Encode(in {{ $ukmeta }}.Input) (any, error) {
 }
 
 // =============================================================================
-// Info Types
-// =============================================================================
-
-type flagInfo = {{ .Core.Types.FlagInfo }}
-type argumentInfo = {{ .Core.Types.ArgumentInfo }}
-
-// =============================================================================
 // Parameter Types
 // =============================================================================
 
@@ -67,19 +70,19 @@ type argumentInfo = {{ .Core.Types.ArgumentInfo }}
 type {{ .Type.Sink }} struct {
 {{- if .Inlines }}
 {{- range .Inlines }}
-    {{ printf "%s %s `ukidx:\"%d\" ukase:\"inline\"`" .FieldName .FieldType.Sink .FieldIndex }}
+    {{ printf "%s %s `%s:\"%d\" %s:\"\"`" .FieldName .FieldType.Sink $tagKeyIndex .FieldIndex $tagKeyInline }}
 {{- end }}
 {{- end }}
 
 {{- if .Flags }}
 {{- range .Flags }}
-    {{ printf "%s flagInfo `ukidx:\"%d\"`" .FieldName .FieldIndex }}
+    {{ printf "%s %s `%s:\"%d\"`" .FieldName $FlagInfo $tagKeyIndex .FieldIndex }}
 {{- end }}
 {{- end }}
 
 {{- if .Arguments }}
 {{- range .Arguments }}
-    {{ printf "%s argumentInfo `ukidx:\"%d\"`" .FieldName .FieldIndex }}
+    {{ printf "%s %s `%s:\"%d\"`" .FieldName $ArgumentInfo $tagKeyIndex .FieldIndex }}
 {{- end }}
 {{- end }}
 }
