@@ -1,21 +1,21 @@
 package ukerror
 
-import "github.com/oligarch316/go-ukase/internal/ierrors"
+import "github.com/oligarch316/go-ukase/internal/ierror"
 
 // TODO: Document
-var ErrAny = ierrors.ErrAny
+var ErrAny = ierror.ErrAny
 
 // TODO: Document
 var (
-	ErrInternal  = ierrors.ErrInternal
-	ErrDeveloper = ierrors.ErrDeveloper
-	ErrUser      = ierrors.ErrUser
+	ErrInternal  = ierror.ErrInternal
+	ErrDeveloper = ierror.ErrDeveloper
+	ErrUser      = ierror.ErrUser
 )
 
 // TODO: Document
 var (
-	ErrDec  = ierrors.ErrDec
-	ErrExec = ierrors.ErrExec
-	ErrInit = ierrors.ErrInit
-	ErrSpec = ierrors.ErrSpec
+	ErrDec  = ierror.ErrDec
+	ErrExec = ierror.ErrExec
+	ErrInit = ierror.ErrInit
+	ErrSpec = ierror.ErrSpec
 )
