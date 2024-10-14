@@ -12,9 +12,3 @@ type Input struct {
 }
 
 type Flag struct{ Name, Value string }
-
-// TODO:
-// type Argument struct {
-// 	Position int
-// 	Value    string
-// }
