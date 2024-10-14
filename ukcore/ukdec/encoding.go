@@ -81,7 +81,6 @@ func (d Decoder) decodeFlag(paramsVal ukcore.ParamsValue, spec ukspec.Parameters
 
 func (d Decoder) decodeArgs(paramsVal ukcore.ParamsValue, spec ukspec.Parameters, args []string) error {
 	for pos, arg := range args {
-		// TODO: Use `Position` field from ukcore.Argument type
 		argSpec, ok := spec.LookupArgument(pos)
 		if !ok {
 			return fmt.Errorf("[TODO decodeArgs] invalid argument position '%d'", pos)
