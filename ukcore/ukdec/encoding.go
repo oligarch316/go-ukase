@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/oligarch316/go-ukase/internal/ireflect"
 	"github.com/oligarch316/go-ukase/ukcore"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
@@ -41,8 +42,8 @@ func (d *Decoder) Decode(params any) error {
 	return d.decodeArgs(paramsVal, spec, d.input.Arguments)
 }
 
-func (Decoder) loadValue(v any) (ukcore.ParamsValue, error) {
-	paramsVal, err := ukcore.NewParamsValue(v)
+func (Decoder) loadValue(v any) (ireflect.ParametersValue, error) {
+	paramsVal, err := ireflect.NewParametersValue(v)
 	if err != nil {
 		tmpVal := reflect.ValueOf(v)
 		err = decodeErr(tmpVal).params(err)
@@ -51,7 +52,7 @@ func (Decoder) loadValue(v any) (ukcore.ParamsValue, error) {
 	return paramsVal, err
 }
 
-func (d Decoder) loadSpec(paramsVal ukcore.ParamsValue) (ukspec.Parameters, error) {
+func (d Decoder) loadSpec(paramsVal ireflect.ParametersValue) (ukspec.Parameters, error) {
 	spec, err := ukspec.NewParameters(paramsVal.Type(), d.config.Spec...)
 	if err != nil {
 		// TODO: Wrap error appropriately
@@ -60,7 +61,7 @@ func (d Decoder) loadSpec(paramsVal ukcore.ParamsValue) (ukspec.Parameters, erro
 	return spec, err
 }
 
-func (d Decoder) decodeFlag(paramsVal ukcore.ParamsValue, spec ukspec.Parameters, flag ukcore.Flag) error {
+func (d Decoder) decodeFlag(paramsVal ireflect.ParametersValue, spec ukspec.Parameters, flag ukcore.Flag) error {
 	flagSpec, ok := spec.LookupFlag(flag.Name)
 	if !ok {
 		return decodeErr(paramsVal.Value).flagName(flag)
@@ -79,7 +80,7 @@ func (d Decoder) decodeFlag(paramsVal ukcore.ParamsValue, spec ukspec.Parameters
 	return nil
 }
 
-func (d Decoder) decodeArgs(paramsVal ukcore.ParamsValue, spec ukspec.Parameters, args []string) error {
+func (d Decoder) decodeArgs(paramsVal ireflect.ParametersValue, spec ukspec.Parameters, args []string) error {
 	for pos, arg := range args {
 		argSpec, ok := spec.LookupArgument(pos)
 		if !ok {

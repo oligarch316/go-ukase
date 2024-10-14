@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/oligarch316/go-ukase/ukcore"
+	"github.com/oligarch316/go-ukase/internal/ireflect"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
 
@@ -50,7 +50,7 @@ func NewRuleSet(opts ...Option) *RuleSet {
 }
 
 func (rs *RuleSet) Process(spec ukspec.Parameters, v any) error {
-	paramsVal, err := ukcore.NewParamsValue(v)
+	paramsVal, err := ireflect.NewParametersValue(v)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (rs RuleSet) processValue(val reflect.Value) error {
 	return nil
 }
 
-func (RuleSet) loadInline(paramsVal ukcore.ParamsValue, index []int) (reflect.Value, error) {
+func (RuleSet) loadInline(paramsVal ireflect.ParametersValue, index []int) (reflect.Value, error) {
 	// Load the relevant field. Intermediate fields constructed automatically.
 	inlineVal := paramsVal.EnsureFieldByIndex(index)
 
