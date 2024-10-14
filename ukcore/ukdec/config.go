@@ -1,20 +1,39 @@
 package ukdec
 
-import "github.com/oligarch316/go-ukase/ukcore/ukspec"
+import (
+	"log/slog"
 
-var defaultConfig = Config{}
+	"github.com/oligarch316/go-ukase/internal/ilog"
+	"github.com/oligarch316/go-ukase/ukcore/ukspec"
+)
+
+// =============================================================================
+// Config
+// =============================================================================
 
 type Option interface{ UkaseApplyDec(*Config) }
 
 type Config struct {
 	// TODO: Document
+	Log *slog.Logger
+
+	// TODO: Document
 	Spec []ukspec.Option
 }
 
 func newConfig(opts []Option) Config {
-	config := defaultConfig
+	config := cfgDefault
 	for _, opt := range opts {
 		opt.UkaseApplyDec(&config)
 	}
 	return config
+}
+
+// =============================================================================
+// Defaults
+// =============================================================================
+
+var cfgDefault = Config{
+	Log:  ilog.Discard,
+	Spec: nil,
 }
