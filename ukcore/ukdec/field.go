@@ -2,53 +2,44 @@ package ukdec
 
 import (
 	"encoding"
-	"errors"
-	"fmt"
 	"reflect"
 	"strconv"
+
+	"github.com/oligarch316/go-ukase/internal/ierror"
 )
 
-// TODO:
-// End users should not need to actually decode a value into a field to discover
-// that field's kind isn't supported. Exposing the kind map or a Validate()
-// check against it seems sane. However, we don't want to import it into
-// ukcore during ParamInfo construction because "sanctity of the dependency graph".
-
-// TODO: Make this more general (invalid field) to support the interface TODO error
-var errUnsupportedKind = errors.New("unsupported kind")
-
-func decode(dst reflect.Value, src string) error {
-	if complete, err := decodeIndirect(dst, src); complete {
+func decodeField(dst reflect.Value, src string) error {
+	if complete, err := decodeFieldIndirect(dst, src); complete {
 		return err
 	}
 
-	if complete, err := decodeCustom(dst, src); complete {
+	if complete, err := decodeFieldCustom(dst, src); complete {
 		return err
 	}
 
-	if complete, err := decodeDirect(dst, src); complete {
+	if complete, err := decodeFieldDirect(dst, src); complete {
 		return err
 	}
 
-	return fmt.Errorf("%w '%s'", errUnsupportedKind, dst.Kind())
+	return ierror.FmtD("unsupported destination kind '%s'", dst.Kind())
 }
 
 // =============================================================================
 // Indirect
 // =============================================================================
 
-func decodeIndirect(dst reflect.Value, src string) (bool, error) {
+func decodeFieldIndirect(dst reflect.Value, src string) (bool, error) {
 	switch dst.Kind() {
 	case reflect.Interface:
-		return true, decodeInterface(dst, src)
+		return true, decodeFieldInterface(dst, src)
 	case reflect.Pointer:
-		return true, decodePointer(dst, src)
+		return true, decodeFieldPointer(dst, src)
 	default:
 		return false, nil
 	}
 }
 
-func decodeInterface(dst reflect.Value, src string) error {
+func decodeFieldInterface(dst reflect.Value, src string) error {
 	// Interface already contains a concrete type+value
 	// ⇒ Copy that type+value to attain "settability"
 	// ⇒ Decode into this copy and set `dst` on success
@@ -58,7 +49,7 @@ func decodeInterface(dst reflect.Value, src string) error {
 		elemNew := reflect.New(elemOld.Type()).Elem()
 		elemNew.Set(elemOld)
 
-		if err := decode(elemNew, src); err != nil {
+		if err := decodeField(elemNew, src); err != nil {
 			return err
 		}
 
@@ -77,20 +68,20 @@ func decodeInterface(dst reflect.Value, src string) error {
 
 	// Interface won't accept a simple string
 	// ⇒ A reference value is required in this case, so fail
-	return errors.New("[TODO decodeInterface] reference value is required here")
+	return ierror.NewD("interface destination is neither string assignable nor contains a non-zero value")
 }
 
-func decodePointer(dst reflect.Value, src string) error {
+func decodeFieldPointer(dst reflect.Value, src string) error {
 	if !dst.IsZero() {
 		// Why bother with this?
 		// ⇒ See tests 'DecodeBaroque/pointer->interface->…'
-		return decode(dst.Elem(), src)
+		return decodeField(dst.Elem(), src)
 	}
 
 	elemType := dst.Type().Elem()
 
 	val := reflect.New(elemType)
-	if err := decode(val.Elem(), src); err != nil {
+	if err := decodeField(val.Elem(), src); err != nil {
 		return err
 	}
 
@@ -104,12 +95,17 @@ func decodePointer(dst reflect.Value, src string) error {
 
 var typeTextUnmarshaler = reflect.TypeFor[encoding.TextUnmarshaler]()
 
-func decodeCustom(dst reflect.Value, src string) (bool, error) {
-	if unmarshaler, ok := loadTextUnmarshaler(dst); ok {
-		return true, unmarshaler.UnmarshalText([]byte(src))
+func decodeFieldCustom(dst reflect.Value, src string) (bool, error) {
+	unmarshaler, ok := loadTextUnmarshaler(dst)
+	if !ok {
+		return false, nil
 	}
 
-	return false, nil
+	if err := unmarshaler.UnmarshalText([]byte(src)); err != nil {
+		return true, ierror.U(err)
+	}
+
+	return true, nil
 }
 
 func loadTextUnmarshaler(val reflect.Value) (encoding.TextUnmarshaler, bool) {
@@ -158,7 +154,7 @@ var basicDecoders = map[reflect.Kind]func(reflect.Value, string) error{
 	reflect.String:     decodeString,
 }
 
-func decodeDirect(dst reflect.Value, src string) (bool, error) {
+func decodeFieldDirect(dst reflect.Value, src string) (bool, error) {
 	kind := dst.Kind()
 
 	if kind == reflect.Slice {
@@ -176,7 +172,7 @@ func decodeSlice(dst reflect.Value, src string) error {
 	elemType := dst.Type().Elem()
 	elemVal := reflect.New(elemType).Elem()
 
-	if err := decode(elemVal, src); err != nil {
+	if err := decodeField(elemVal, src); err != nil {
 		return err
 	}
 
@@ -188,7 +184,7 @@ func decodeSlice(dst reflect.Value, src string) error {
 func decodeBool(dst reflect.Value, src string) error {
 	boolVal, err := strconv.ParseBool(src)
 	if err != nil {
-		return err
+		return ierror.U(err)
 	}
 
 	dst.SetBool(boolVal)
@@ -198,7 +194,7 @@ func decodeBool(dst reflect.Value, src string) error {
 func decodeInt(dst reflect.Value, src string) error {
 	intVal, err := strconv.ParseInt(src, 10, dst.Type().Bits())
 	if err != nil {
-		return err
+		return ierror.U(err)
 	}
 
 	dst.SetInt(intVal)
@@ -208,7 +204,7 @@ func decodeInt(dst reflect.Value, src string) error {
 func decodeUint(dst reflect.Value, src string) error {
 	uintVal, err := strconv.ParseUint(src, 10, dst.Type().Bits())
 	if err != nil {
-		return err
+		return ierror.U(err)
 	}
 
 	dst.SetUint(uintVal)
@@ -218,7 +214,7 @@ func decodeUint(dst reflect.Value, src string) error {
 func decodeFloat(dst reflect.Value, src string) error {
 	floatVal, err := strconv.ParseFloat(src, dst.Type().Bits())
 	if err != nil {
-		return err
+		return ierror.U(err)
 	}
 
 	dst.SetFloat(floatVal)
@@ -228,7 +224,7 @@ func decodeFloat(dst reflect.Value, src string) error {
 func decodeComplex(dst reflect.Value, src string) error {
 	complexVal, err := strconv.ParseComplex(src, dst.Type().Bits())
 	if err != nil {
-		return err
+		return ierror.U(err)
 	}
 
 	dst.SetComplex(complexVal)

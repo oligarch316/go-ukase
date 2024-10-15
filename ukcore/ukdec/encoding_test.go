@@ -6,6 +6,7 @@ import (
 
 	"github.com/oligarch316/go-ukase/ukcore"
 	"github.com/oligarch316/go-ukase/ukcore/ukdec"
+	"github.com/oligarch316/go-ukase/ukerror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,24 +50,24 @@ func TestDecodeError(t *testing.T) {
 		// ===== Invalid parameters
 		{
 			name:     "params non-pointer",
-			expected: new(ukdec.ErrorDecodeParams),
+			expected: new(ukdec.InvalidParametersError),
 			params:   struct{}{},
 		},
 		{
 			name:     "params nil pointer",
-			expected: new(ukdec.ErrorDecodeParams),
+			expected: new(ukdec.InvalidParametersError),
 			params:   (*struct{})(nil),
 		},
 		{
 			name:     "params non-struct",
-			expected: new(ukdec.ErrorDecodeParams),
+			expected: new(ukdec.InvalidParametersError),
 			params:   new(string),
 		},
 
-		// ===== Invalid parameters field
+		// ===== Unsupported field destination
 		{
 			name:     "field array",
-			expected: new(ukdec.ErrorDecodeField),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A [42]int `ukflag:"flagA"`
@@ -74,7 +75,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "field channel",
-			expected: new(ukdec.ErrorDecodeField),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A chan int `ukflag:"flagA"`
@@ -82,7 +83,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "field function",
-			expected: new(ukdec.ErrorDecodeField),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A func() `ukflag:"flagA"`
@@ -90,7 +91,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "field map",
-			expected: new(ukdec.ErrorDecodeField),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A map[int]int `ukflag:"flagA"`
@@ -98,34 +99,33 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "field struct",
-			expected: new(ukdec.ErrorDecodeField),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "valA"),
 			params: new(struct {
 				A struct{} `ukflag:"flagA"`
 			}),
 		},
-		// TODO:
-		// {
-		// 	name:     "field bespoke zero value interface",
-		// 	expected: new(ukdec.ErrorDecodeField),
-		// 	input:    genInput(t, "flagA", "valA"),
-		// 	params: new(struct {
-		// 		A interface{ Bespoke() } `ukflag:"flagA"`
-		// 	}),
-		// },
+		{
+			name:     "field bespoke zero value interface",
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
+			input:    genInput(t, "flagA", "valA"),
+			params: new(struct {
+				A interface{ Bespoke() } `ukflag:"flagA"`
+			}),
+		},
 
-		// ===== Invalid flag name
+		// ===== Unknown field input
 		{
 			name:     "flag name missing",
-			expected: new(ukdec.ErrorDecodeFlagName),
+			expected: new(ukdec.UnknownFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "valA"),
 			params:   new(struct{}),
 		},
 
-		// ===== Invalid flag value
+		// ===== Invalid field value
 		{
 			name:     "flag value invalid bool",
-			expected: new(ukdec.ErrorDecodeFlagValue),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A bool `ukflag:"flagA"`
@@ -133,7 +133,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value NaN int",
-			expected: new(ukdec.ErrorDecodeFlagValue),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A int `ukflag:"flagA"`
@@ -141,7 +141,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value NaN uint",
-			expected: new(ukdec.ErrorDecodeFlagValue),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A uint `ukflag:"flagA"`
@@ -149,7 +149,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value NaN float",
-			expected: new(ukdec.ErrorDecodeFlagValue),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A float32 `ukflag:"flagA"`
@@ -157,7 +157,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value NaN complex",
-			expected: new(ukdec.ErrorDecodeFlagValue),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A complex64 `ukflag:"flagA"`
@@ -165,7 +165,7 @@ func TestDecodeError(t *testing.T) {
 		},
 		{
 			name:     "flag value invalid TextUnmarshaler",
-			expected: new(ukdec.ErrorDecodeFlagValue),
+			expected: new(ukdec.InvalidFieldError[ukcore.Flag]),
 			input:    genInput(t, "flagA", "invalid"),
 			params: new(struct {
 				A time.Time `ukflag:"flagA"`
@@ -178,7 +178,8 @@ func TestDecodeError(t *testing.T) {
 
 		t.Run(st.name, func(t *testing.T) {
 			err := ukdec.NewDecoder(st.input).Decode(st.params)
-			require.ErrorIs(t, err, ukdec.ErrDecode)
+			// require.ErrorIs(t, err, ukdec.ErrDecode)
+			require.ErrorIs(t, err, ukerror.ErrDec)
 			require.ErrorAs(t, err, st.expected)
 		})
 	}
@@ -397,7 +398,7 @@ func TestDecodeEmbedded(t *testing.T) {
 		}
 
 		type Params struct {
-			Embedded      `ukase:"inline"`
+			Embedded      `ukinline:""`
 			ParamStandard string `ukflag:"flagStandard"`
 		}
 
@@ -422,7 +423,7 @@ func TestDecodeEmbedded(t *testing.T) {
 		}
 
 		type Params struct {
-			*Embedded     `ukase:"inline"`
+			*Embedded     `ukinline:""`
 			ParamStandard string `ukflag:"flagStandard"`
 		}
 
@@ -449,7 +450,7 @@ func TestDecodeEmbedded(t *testing.T) {
 		}
 
 		type Params struct {
-			*Embedded     `ukase:"inline"`
+			*Embedded     `ukinline:""`
 			ParamStandard string `ukflag:"flagStandard"`
 		}
 

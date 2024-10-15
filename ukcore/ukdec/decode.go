@@ -2,6 +2,7 @@ package ukdec
 
 import (
 	"fmt"
+	"log/slog"
 	"reflect"
 
 	"github.com/oligarch316/go-ukase/internal/ierror"
@@ -45,14 +46,18 @@ func (d Decoder) decodeFlags(paramsVal ireflect.ParametersValue, paramsSpec uksp
 		flagSpec, ok := paramsSpec.LookupFlag(flag.Name)
 		if !ok {
 			err := ierror.FmtU("unknown flag name '%s' (%s)", flag.Name, flag.Value)
-			return UnknownFieldError[ukcore.Flag]{Input: flag, err: err}
+			return UnknownFieldError[ukcore.Flag]{Source: flag, err: err}
 		}
 
-		d.config.Log.Debug("decoding flag field", "type", flagSpec.FieldType, "name", flagSpec.FieldName)
 		fieldVal := paramsVal.EnsureFieldByIndex(flagSpec.FieldIndex)
 
-		if err := decode(fieldVal, flag.Value); err != nil {
-			return fmt.Errorf("[TODO decodeFlags] decodeField error: %w", err)
+		d.config.Log.Debug("decoding flag field",
+			slog.Group("input", "name", flag.Name, "value", flag.Value),
+			slog.Group("spec", "type", flagSpec.FieldType, "name", flagSpec.FieldName),
+		)
+
+		if err := decodeField(fieldVal, flag.Value); err != nil {
+			return InvalidFieldError[ukcore.Flag]{Source: flag, Destination: fieldVal.Type(), err: err}
 		}
 	}
 
@@ -64,14 +69,18 @@ func (d Decoder) decodeArguments(paramsVal ireflect.ParametersValue, paramsSpec 
 		argSpec, ok := paramsSpec.LookupArgument(arg.Position)
 		if !ok {
 			err := ierror.FmtU("unknown argument position '%d' (%s)", arg.Position, arg.Value)
-			return UnknownFieldError[ukcore.Argument]{Input: arg, err: err}
+			return UnknownFieldError[ukcore.Argument]{Source: arg, err: err}
 		}
 
-		d.config.Log.Debug("decoding argument field", "type", argSpec.FieldType, "name", argSpec.FieldName)
 		fieldVal := paramsVal.EnsureFieldByIndex(argSpec.FieldIndex)
 
-		if err := decode(fieldVal, arg.Value); err != nil {
-			return fmt.Errorf("[TODO decodeArguments] decodeField error: %w", err)
+		d.config.Log.Debug("decoding argument field",
+			slog.Group("input", "position", arg.Position, "value", arg.Value),
+			slog.Group("spec", "type", argSpec.FieldType, "name", argSpec.FieldName),
+		)
+
+		if err := decodeField(fieldVal, arg.Value); err != nil {
+			return InvalidFieldError[ukcore.Argument]{Source: arg, Destination: fieldVal.Type(), err: err}
 		}
 	}
 
