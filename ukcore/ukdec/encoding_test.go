@@ -178,7 +178,6 @@ func TestDecodeError(t *testing.T) {
 
 		t.Run(st.name, func(t *testing.T) {
 			err := ukdec.NewDecoder(st.input).Decode(st.params)
-			// require.ErrorIs(t, err, ukdec.ErrDecode)
 			require.ErrorIs(t, err, ukerror.ErrDec)
 			require.ErrorAs(t, err, st.expected)
 		})
