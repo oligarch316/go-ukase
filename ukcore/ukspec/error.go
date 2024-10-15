@@ -8,10 +8,7 @@ import (
 	"github.com/oligarch316/go-ukase/internal/ierror"
 )
 
-var (
-	ErrConflict = errors.New("conflict error")
-	ErrInvalid  = errors.New("invalid error")
-)
+var ErrConflict = errors.New("conflict error")
 
 type ConflictError[T fmt.Stringer] struct {
 	Trail            []Inline
@@ -33,8 +30,8 @@ type InvalidParametersError struct {
 var errIsTagged = ierror.IsTaggedFunc(ierror.ErrSpec)
 
 func (ConflictError[T]) Is(t error) bool       { return errIsTagged(t, ErrConflict) }
-func (InvalidFieldError) Is(t error) bool      { return errIsTagged(t, ErrInvalid) }
-func (InvalidParametersError) Is(t error) bool { return errIsTagged(t, ErrInvalid) }
+func (InvalidFieldError) Is(t error) bool      { return errIsTagged(t) }
+func (InvalidParametersError) Is(t error) bool { return errIsTagged(t) }
 
 func (e ConflictError[T]) Unwrap() error       { return e.err }
 func (e InvalidFieldError) Unwrap() error      { return e.err }
