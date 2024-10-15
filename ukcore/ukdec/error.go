@@ -18,28 +18,30 @@ type InvalidParametersError struct {
 	err  error
 }
 
-type InvalidFieldError[T any] struct {
-	err error
+type InvalidFieldError[S any] struct {
+	Source      S
+	Destination reflect.Type
+	err         error
 }
 
-type UnknownFieldError[T any] struct {
-	Input T
-	err   error
+type UnknownFieldError[S any] struct {
+	Source S
+	err    error
 }
 
 var errIsTagged = ierror.IsTaggedFunc(ierror.ErrDec)
 
 func (e InvalidParametersError) Is(t error) bool { return errIsTagged(t) }
-func (e InvalidFieldError[T]) Is(t error) bool   { return errIsTagged(t, ErrInvalidField) }
-func (e UnknownFieldError[T]) Is(t error) bool   { return errIsTagged(t, ErrUnknownField) }
+func (e InvalidFieldError[S]) Is(t error) bool   { return errIsTagged(t, ErrInvalidField) }
+func (e UnknownFieldError[S]) Is(t error) bool   { return errIsTagged(t, ErrUnknownField) }
 
 func (e InvalidParametersError) Unwrap() error { return e.err }
-func (e InvalidFieldError[T]) Unwrap() error   { return e.err }
-func (e UnknownFieldError[T]) Unwrap() error   { return e.err }
+func (e InvalidFieldError[S]) Unwrap() error   { return e.err }
+func (e UnknownFieldError[S]) Unwrap() error   { return e.err }
 
 func (e InvalidParametersError) Error() string {
 	return fmt.Sprintf("invalid parameters '%s': %s", e.Type, e.err)
 }
 
-func (e InvalidFieldError[T]) Error() string { return e.err.Error() }
-func (e UnknownFieldError[T]) Error() string { return e.err.Error() }
+func (e InvalidFieldError[S]) Error() string { return e.err.Error() }
+func (e UnknownFieldError[S]) Error() string { return e.err.Error() }
