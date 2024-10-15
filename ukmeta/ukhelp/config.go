@@ -43,7 +43,14 @@ var cfgDefault = Config{
 }
 
 func cfgPrepare(in ukcli.Input, refTarget []string) (ukmeta.Input, error) {
-	refTarget = append(refTarget, in.Core().Arguments...)
+	// TODO:
+	// Since adding the `ukcore.Argument` type with included `Position` field,
+	// add some rigor (docs or otherwise) to assumption they come in sorted order.
+
+	for _, arg := range in.Core().Arguments {
+		refTarget = append(refTarget, arg.Value)
+	}
+
 	return ukmeta.NewInput(in, refTarget...)
 }
 

@@ -197,7 +197,7 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 		// ... non-subcommand ⇒ set as 1st argument and break out to argument parsing
 		child, ok := node.children[token.Value]
 		if !ok {
-			input.Arguments = append(input.Arguments, token.Value)
+			input.Arguments = m.appendArguments(input.Arguments, token.Value)
 			break
 		}
 
@@ -207,7 +207,7 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 	}
 
 	// All remaining unconsumed values are treated as arguments
-	input.Arguments = append(input.Arguments, parser.Values...)
+	input.Arguments = m.appendArguments(input.Arguments, parser.Values...)
 
 	m.config.Log.Info("executing", "target", input.Target)
 
@@ -216,4 +216,13 @@ func (m *Mux) Execute(ctx context.Context, values []string) error {
 	}
 
 	return node.exec(ctx, input)
+}
+
+func (Mux) appendArguments(args []ukcore.Argument, values ...string) []ukcore.Argument {
+	pos := len(args)
+	for _, value := range values {
+		args = append(args, ukcore.Argument{Position: pos, Value: value})
+		pos += 1
+	}
+	return args
 }

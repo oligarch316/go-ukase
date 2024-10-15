@@ -7,8 +7,16 @@ type Exec func(context.Context, Input) error
 type Input struct {
 	Program   string
 	Target    []string
-	Arguments []string
+	Arguments []Argument
 	Flags     []Flag
 }
 
-type Flag struct{ Name, Value string }
+type Flag struct {
+	Name  string
+	Value string
+}
+
+type Argument struct {
+	Position int
+	Value    string
+}

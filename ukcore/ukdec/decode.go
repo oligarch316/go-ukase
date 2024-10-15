@@ -1,10 +1,10 @@
 package ukdec
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
+	"github.com/oligarch316/go-ukase/internal/ierror"
 	"github.com/oligarch316/go-ukase/internal/ireflect"
 	"github.com/oligarch316/go-ukase/ukcore"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
@@ -16,81 +16,62 @@ type Decoder struct {
 }
 
 func NewDecoder(input ukcore.Input, opts ...Option) *Decoder {
-	return &Decoder{
-		config: newConfig(opts),
-		input:  input,
-	}
+	config := newConfig(opts)
+	return &Decoder{config: config, input: input}
 }
 
 func (d *Decoder) Decode(params any) error {
-	paramsVal, err := d.loadValue(params)
+	d.config.Log.Info("decoding parameters", "type", fmt.Sprintf("%T", params))
+
+	paramsVal, err := ireflect.NewParametersValue(params)
+	if err != nil {
+		return InvalidParametersError{Type: reflect.TypeOf(params), err: err}
+	}
+
+	paramsSpec, err := ukspec.NewParameters(paramsVal.Type(), d.config.Spec...)
 	if err != nil {
 		return err
 	}
 
-	spec, err := d.loadSpec(paramsVal)
-	if err != nil {
+	if err := d.decodeFlags(paramsVal, paramsSpec, d.input.Flags); err != nil {
 		return err
 	}
 
-	for _, flag := range d.input.Flags {
-		if err := d.decodeFlag(paramsVal, spec, flag); err != nil {
-			return err
-		}
-	}
-
-	return d.decodeArgs(paramsVal, spec, d.input.Arguments)
+	return d.decodeArguments(paramsVal, paramsSpec, d.input.Arguments)
 }
 
-func (Decoder) loadValue(v any) (ireflect.ParametersValue, error) {
-	paramsVal, err := ireflect.NewParametersValue(v)
-	if err != nil {
-		tmpVal := reflect.ValueOf(v)
-		err = decodeErr(tmpVal).params(err)
-	}
-
-	return paramsVal, err
-}
-
-func (d Decoder) loadSpec(paramsVal ireflect.ParametersValue) (ukspec.Parameters, error) {
-	spec, err := ukspec.NewParameters(paramsVal.Type(), d.config.Spec...)
-	if err != nil {
-		// TODO: Wrap error appropriately
-	}
-
-	return spec, err
-}
-
-func (d Decoder) decodeFlag(paramsVal ireflect.ParametersValue, spec ukspec.Parameters, flag ukcore.Flag) error {
-	flagSpec, ok := spec.LookupFlag(flag.Name)
-	if !ok {
-		return decodeErr(paramsVal.Value).flagName(flag)
-	}
-
-	fieldVal := paramsVal.EnsureFieldByIndex(flagSpec.FieldIndex)
-
-	if err := decode(fieldVal, flag.Value); err != nil {
-		if errors.Is(err, errUnsupportedKind) {
-			return decodeErr(paramsVal.Value).field(fieldVal, flagSpec.FieldName, err)
+func (d Decoder) decodeFlags(paramsVal ireflect.ParametersValue, paramsSpec ukspec.Parameters, flags []ukcore.Flag) error {
+	for _, flag := range flags {
+		flagSpec, ok := paramsSpec.LookupFlag(flag.Name)
+		if !ok {
+			err := ierror.FmtU("unknown flag name '%s' (%s)", flag.Name, flag.Value)
+			return UnknownFieldError[ukcore.Flag]{Input: flag, err: err}
 		}
 
-		return decodeErr(paramsVal.Value).flagValue(flag, err)
+		d.config.Log.Debug("decoding flag field", "type", flagSpec.FieldType, "name", flagSpec.FieldName)
+		fieldVal := paramsVal.EnsureFieldByIndex(flagSpec.FieldIndex)
+
+		if err := decode(fieldVal, flag.Value); err != nil {
+			return fmt.Errorf("[TODO decodeFlags] decodeField error: %w", err)
+		}
 	}
 
 	return nil
 }
 
-func (d Decoder) decodeArgs(paramsVal ireflect.ParametersValue, spec ukspec.Parameters, args []string) error {
-	for pos, arg := range args {
-		argSpec, ok := spec.LookupArgument(pos)
+func (d Decoder) decodeArguments(paramsVal ireflect.ParametersValue, paramsSpec ukspec.Parameters, args []ukcore.Argument) error {
+	for _, arg := range args {
+		argSpec, ok := paramsSpec.LookupArgument(arg.Position)
 		if !ok {
-			return fmt.Errorf("[TODO decodeArgs] invalid argument position '%d'", pos)
+			err := ierror.FmtU("unknown argument position '%d' (%s)", arg.Position, arg.Value)
+			return UnknownFieldError[ukcore.Argument]{Input: arg, err: err}
 		}
 
+		d.config.Log.Debug("decoding argument field", "type", argSpec.FieldType, "name", argSpec.FieldName)
 		fieldVal := paramsVal.EnsureFieldByIndex(argSpec.FieldIndex)
 
-		if err := decode(fieldVal, arg); err != nil {
-			return fmt.Errorf("[TODO decodeArgs] decode error: %w", err)
+		if err := decode(fieldVal, arg.Value); err != nil {
+			return fmt.Errorf("[TODO decodeArguments] decodeField error: %w", err)
 		}
 	}
 
