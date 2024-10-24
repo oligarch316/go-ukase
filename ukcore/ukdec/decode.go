@@ -11,6 +11,24 @@ import (
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
 )
 
+// =============================================================================
+// Convenience
+// =============================================================================
+
+func DecodeFor[Params any](input ukcore.Input, opts ...Option) (Params, error) {
+	params := new(Params)
+	err := Decode(input, params, opts...)
+	return *params, err
+}
+
+func Decode(input ukcore.Input, params any, opts ...Option) error {
+	return NewDecoder(input, opts...).Decode(params)
+}
+
+// =============================================================================
+// Decoder
+// =============================================================================
+
 type Decoder struct {
 	config Config
 	input  ukcore.Input

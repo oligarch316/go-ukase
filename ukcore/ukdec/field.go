@@ -8,6 +8,12 @@ import (
 	"github.com/oligarch316/go-ukase/internal/ierror"
 )
 
+// =============================================================================
+// Field
+// › Dispatch entrypoint
+// › Indirect and container decode logic recurses back here
+// =============================================================================
+
 func decodeField(dst reflect.Value, src string) error {
 	if complete, err := decodeFieldIndirect(dst, src); complete {
 		return err
@@ -21,11 +27,15 @@ func decodeField(dst reflect.Value, src string) error {
 		return err
 	}
 
+	// TODO:
+	// We should error on unsupported field kinds during spec creation
+	// When/if that happens, this can become an internal error
 	return ierror.FmtD("unsupported destination kind '%s'", dst.Kind())
 }
 
 // =============================================================================
-// Indirect
+// Indirect Field
+// › Handles interfaces and pointers
 // =============================================================================
 
 func decodeFieldIndirect(dst reflect.Value, src string) (bool, error) {
@@ -68,7 +78,7 @@ func decodeFieldInterface(dst reflect.Value, src string) error {
 
 	// Interface won't accept a simple string
 	// ⇒ A reference value is required in this case, so fail
-	return ierror.NewD("interface destination is neither string assignable nor contains a non-zero value")
+	return ierror.NewD("interface destination neither contains a non-zero value nor is string-assignable")
 }
 
 func decodeFieldPointer(dst reflect.Value, src string) error {
@@ -90,7 +100,8 @@ func decodeFieldPointer(dst reflect.Value, src string) error {
 }
 
 // =============================================================================
-// Custom
+// Custom Field
+// › Handles encoding.TextUnmarshaler implementations
 // =============================================================================
 
 var typeTextUnmarshaler = reflect.TypeFor[encoding.TextUnmarshaler]()
@@ -132,7 +143,13 @@ func loadTextUnmarshaler(val reflect.Value) (encoding.TextUnmarshaler, bool) {
 }
 
 // =============================================================================
-// Direct
+// Direct Field
+// › Handles slices
+// › Handles "basic" types (bool, numeric, string)
+//
+// TODO:
+// Move slices into their own "Container Type" section?
+// Esp. if support for arrays (or even structs) is added
 // =============================================================================
 
 var basicDecoders = map[reflect.Kind]func(reflect.Value, string) error{
@@ -162,6 +179,9 @@ func decodeFieldDirect(dst reflect.Value, src string) (bool, error) {
 	}
 
 	if decodeBasic, ok := basicDecoders[kind]; ok {
+		// TODO:
+		// The "user" errors coming from here are not "pretty" enough for actual end-users
+		// example > strconv.ParseBool: parsing "ipsum": invalid syntax
 		return true, decodeBasic(dst, src)
 	}
 
