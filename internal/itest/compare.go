@@ -12,6 +12,10 @@ import (
 	"gotest.tools/v3/assert/cmp"
 )
 
+func Run[T any](t *testing.T, runner Runner[T], subtests ...T) {
+	runner.Run(t, subtests...)
+}
+
 type Runner[T any] func(subtest T) (name string, comparison cmp.Comparison)
 
 func (r Runner[T]) Run(t *testing.T, subtests ...T) {
@@ -25,9 +29,9 @@ func (r Runner[T]) Run(t *testing.T, subtests ...T) {
 // Message Formatting
 // =============================================================================
 
-type failureFormat []string
+type FailureFormat []string
 
-func (ff failureFormat) Result(a ...any) cmp.Result {
+func (ff FailureFormat) Result(a ...any) cmp.Result {
 	format := strings.Join(ff, "\n")
 	message := fmt.Sprintf(format, a...)
 	return cmp.ResultFailure(message)
@@ -58,7 +62,7 @@ func CmpSequence(seq ...cmp.Comparison) cmp.Comparison {
 // -----------------------------------------------------------------------------
 
 func CmpErrorAs[Expected error](actual error) cmp.Comparison {
-	failFormat := failureFormat{
+	failFormat := FailureFormat{
 		"",
 		"unexpected error type",
 		"  actual:   %T",
@@ -82,7 +86,7 @@ func CmpErrorAs[Expected error](actual error) cmp.Comparison {
 }
 
 func CmpErrorIs(actual, expected error) cmp.Comparison {
-	failFormat := failureFormat{
+	failFormat := FailureFormat{
 		"",
 		"unexpected error value",
 		"  actual:   %s",
@@ -134,7 +138,7 @@ var CmpErrorIsU = errorSeverity{U: true}.compareIs
 type errorSeverity struct{ I, D, U bool }
 
 func (eSev errorSeverity) compareIs(actual error) cmp.Comparison {
-	failFormat := failureFormat{
+	failFormat := FailureFormat{
 		"",
 		"unexpected error severity",
 		"  actual:   %-9t %-10t %t",

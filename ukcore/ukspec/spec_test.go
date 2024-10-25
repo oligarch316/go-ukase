@@ -2,14 +2,11 @@ package ukspec_test
 
 import (
 	"encoding"
-	"errors"
 	"fmt"
-	"reflect"
-	"strings"
 	"testing"
 
+	"github.com/oligarch316/go-ukase/internal/itest"
 	"github.com/oligarch316/go-ukase/ukcore/ukspec"
-	"github.com/oligarch316/go-ukase/ukerror"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/assert/cmp"
 )
@@ -19,28 +16,13 @@ import (
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// Load Parameters› Error› Helpers
+// Load Parameters› Error
 // -----------------------------------------------------------------------------
-
-func compareParamsError[Expected error](actual error) cmp.Comparison {
-	return func() cmp.Result {
-		if expected := new(Expected); errors.As(actual, expected) {
-			return cmp.ResultSuccess
-		}
-
-		message := fmt.Sprintf("unexpected error type '%T', expected '%s'", actual, reflect.TypeFor[Expected]())
-		return cmp.ResultFailure(message)
-	}
-}
 
 func runParamsError[Params any, Expected error](t *testing.T) {
 	_, actual := ukspec.ParametersFor[Params]()
-	assert.Check(t, compareParamsError[Expected](actual))
+	assert.Check(t, itest.CmpErrorAs[Expected](actual))
 }
-
-// -----------------------------------------------------------------------------
-// Load Parameters› Error› Tests
-// -----------------------------------------------------------------------------
 
 func TestLoadParametersError(t *testing.T) {
 	// --- Convenient error type shorthands
@@ -153,7 +135,7 @@ func TestLoadParametersError(t *testing.T) {
 }
 
 // -----------------------------------------------------------------------------
-// Load Parameters› Success› Helpers
+// Load Parameters› Success
 // -----------------------------------------------------------------------------
 
 type fieldKey interface {
@@ -177,26 +159,21 @@ func (fk flagKey) lookup(p ukspec.Parameters) (string, bool) {
 	return v.FieldName, ok
 }
 
-func compareParamsField(params ukspec.Parameters, key fieldKey, expected string) cmp.Comparison {
-	failureLines := []string{
+func cmpParamsField(key fieldKey, params ukspec.Parameters, expected string) cmp.Comparison {
+	failFormat := itest.FailureFormat{
 		"",
 		"unexpected value for %s",
-		"  expected: %s",
 		"  actual:   %s",
-	}
-
-	failure := func(actual string) cmp.Result {
-		format := strings.Join(failureLines, "\n")
-		message := fmt.Sprintf(format, key, expected, actual)
-		return cmp.ResultFailure(message)
+		"  expected: %s",
+		"",
 	}
 
 	return func() cmp.Result {
 		switch actual, exists := key.lookup(params); {
 		case !exists:
-			return failure("❬N/A❭")
+			return failFormat.Result(key, "❬N/A❭", expected)
 		case actual != expected:
-			return failure(actual)
+			return failFormat.Result(key, actual, expected)
 		default:
 			return cmp.ResultSuccess
 		}
@@ -208,7 +185,7 @@ func checkParamsFields[Params any](t *testing.T, expectedFields map[fieldKey]str
 	assert.NilError(t, err)
 
 	for key, expected := range expectedFields {
-		assert.Check(t, compareParamsField(params, key, expected))
+		assert.Check(t, cmpParamsField(key, params, expected))
 	}
 }
 
@@ -216,14 +193,11 @@ func runParamsFields[Params any](expectedFields map[fieldKey]string) func(*testi
 	return func(t *testing.T) { checkParamsFields[Params](t, expectedFields) }
 }
 
-// -----------------------------------------------------------------------------
-// Load Parameters› Success› Tests
-// -----------------------------------------------------------------------------
-
 func TestLoadParametersSuccess(t *testing.T) {
 	// TODO:
 	// Below is a basic stopgap
 	// More thorough excercise of functionality is warranted
+
 	{
 		type Cone struct {
 			FlagA string `ukflag:"a aa"`
@@ -277,131 +251,139 @@ func TestLoadParametersSuccess(t *testing.T) {
 // Unmarshal Tag
 // =============================================================================
 
-// -----------------------------------------------------------------------------
-// Unmarshal Tag› Helpers
-// -----------------------------------------------------------------------------
-
 type TagUnmarshaler[T any] interface {
 	encoding.TextUnmarshaler
 	*T
 }
 
-func loadTag[T any, TU TagUnmarshaler[T]](input string) (tag T, err error) {
-	var tu TU = &tag
-	return tag, tu.UnmarshalText([]byte(input))
+func loadTag[T any, TU TagUnmarshaler[T]](input string) (T, error) {
+	var tu TU = new(T)
+	return *tu, tu.UnmarshalText([]byte(input))
 }
 
-// -----------------------------------------------------------------------------
-// Unmarshal Tag› Tests
-// -----------------------------------------------------------------------------
+func TestUnmarshalTagError(t *testing.T) {
+	// TODO: Description Comment
 
-func TestUnmarshalTag(t *testing.T) {
-	type subtest[ExpectedT any] struct {
-		name     string
-		input    string
-		expected ExpectedT
+	type subtest struct {
+		name    string
+		input   string
+		compare func(error) cmp.Comparison
 	}
 
 	t.Run("argument position", func(t *testing.T) {
-		invalidSubtests := []subtest[error]{
-			{"empty", "", ukerror.ErrDeveloper},
-			{"non-digit", "lorem", ukerror.ErrDeveloper},
-			{"multiple colons", "1:2:3", ukerror.ErrDeveloper},
-			{"digit below minimum", "-1", ukerror.ErrDeveloper},
-			{"digit above maximum", "18446744073709551616", ukerror.ErrDeveloper},
-			{"unbound low equals high", ":0", ukerror.ErrDeveloper},
-			{"explicit low equals high", "0:0", ukerror.ErrDeveloper},
-			{"explicit low exceeds high", "1:0", ukerror.ErrDeveloper},
+		subtests := []subtest{
+			{"empty", "", itest.CmpErrorIsD},
+			{"non-digit", "lorem", itest.CmpErrorIsD},
+			{"multiple colons", "1:2:3", itest.CmpErrorIsD},
+			{"digit below minimum", "-1", itest.CmpErrorIsD},
+			{"digit above maximum", "18446744073709551616", itest.CmpErrorIsD},
+			{"unbound low equals high", ":0", itest.CmpErrorIsD},
+			{"explicit low equals high", "0:0", itest.CmpErrorIsD},
+			{"explicit low exceeds high", "1:0", itest.CmpErrorIsD},
 		}
 
-		for _, st := range invalidSubtests {
-			t.Run(st.name, func(t *testing.T) {
-				_, actual := loadTag[ukspec.ArgumentPosition](st.input)
-				assert.Check(t, cmp.ErrorIs(actual, st.expected), "input: %q", st.input)
-			})
+		runner := func(st subtest) (string, cmp.Comparison) {
+			_, err := loadTag[ukspec.ArgumentPosition](st.input)
+			return st.name, st.compare(err)
 		}
 
-		buildIndex := func(in any) (out *uint) {
-			if in != nil {
-				tmp := uint(in.(int))
-				out = &tmp
-			}
-			return
-		}
-
-		buildPosition := func(low, high any) (out ukspec.ArgumentPosition) {
-			out.Low, out.High = buildIndex(low), buildIndex(high)
-			return
-		}
-
-		validSubtests := []subtest[ukspec.ArgumentPosition]{
-			{"explicit digit", "0", buildPosition(0, 1)},
-			{"explicit range", "0:5", buildPosition(0, 5)},
-			{"unbound start", ":5", buildPosition(nil, 5)},
-			{"unbound end", "0:", buildPosition(0, nil)},
-			{"unbound start and end", ":", buildPosition(nil, nil)},
-		}
-
-		for _, st := range validSubtests {
-			t.Run(st.name, func(t *testing.T) {
-				actual, err := loadTag[ukspec.ArgumentPosition](st.input)
-				assert.NilError(t, err, "input: %q", st.input)
-				assert.Check(t, cmp.DeepEqual(actual, st.expected), "input: %q", st.input)
-			})
-		}
+		itest.Run(t, runner, subtests...)
 	})
 
 	t.Run("flag names", func(t *testing.T) {
-		invalidSubtests := []subtest[error]{
-			{"empty", "", ukerror.ErrDeveloper},
-			{"hyphen prefix", "-lorem", ukerror.ErrDeveloper},
+		subtests := []subtest{
+			{"empty", "", itest.CmpErrorIsD},
+			{"hyphen prefix", "-lorem", itest.CmpErrorIsD},
 		}
 
-		for _, st := range invalidSubtests {
-			t.Run(st.name, func(t *testing.T) {
-				_, actual := loadTag[ukspec.FlagNames](st.input)
-				assert.Check(t, cmp.ErrorIs(actual, st.expected), "input: %q", st.input)
-			})
+		runner := func(st subtest) (string, cmp.Comparison) {
+			_, err := loadTag[ukspec.FlagNames](st.input)
+			return st.name, st.compare(err)
 		}
 
-		validSubtests := []subtest[ukspec.FlagNames]{
+		itest.Run(t, runner, subtests...)
+	})
+
+	t.Run("inline prefix", func(t *testing.T) {
+		subtests := []subtest{
+			{"hyphen prefix", "-lorem", itest.CmpErrorIsD},
+			{"whitespace present", "lorem ipsum dolor", itest.CmpErrorIsD},
+		}
+
+		runner := func(st subtest) (string, cmp.Comparison) {
+			_, err := loadTag[ukspec.InlinePrefix](st.input)
+			return st.name, st.compare(err)
+		}
+
+		itest.Run(t, runner, subtests...)
+	})
+}
+
+func TestUnmarshalTagSuccess(t *testing.T) {
+	// TODO: Description Comment
+
+	type subtest struct {
+		name     string
+		input    string
+		expected any
+	}
+
+	t.Run("argument position", func(t *testing.T) {
+		genPosition := func(low, high any) (out ukspec.ArgumentPosition) {
+			if low != nil {
+				tmp := uint(low.(int))
+				out.Low = &tmp
+			}
+
+			if high != nil {
+				tmp := uint(high.(int))
+				out.High = &tmp
+			}
+
+			return
+		}
+
+		subtests := []subtest{
+			{"explicit digit", "0", genPosition(0, 1)},
+			{"explicit range", "0:5", genPosition(0, 5)},
+			{"unbound start", ":5", genPosition(nil, 5)},
+			{"unbound end", "0:", genPosition(0, nil)},
+			{"unbound start and end", ":", genPosition(nil, nil)},
+		}
+
+		runner := func(st subtest) (string, cmp.Comparison) {
+			actual, err := loadTag[ukspec.ArgumentPosition](st.input)
+			return st.name, itest.CmpSequence(cmp.Nil(err), cmp.DeepEqual(actual, st.expected))
+		}
+
+		itest.Run(t, runner, subtests...)
+	})
+
+	t.Run("flag names", func(t *testing.T) {
+		subtests := []subtest{
 			{"single", "lorem", ukspec.FlagNames{"lorem"}},
 			{"multiple", "lorem ipsum dolor", ukspec.FlagNames{"lorem", "ipsum", "dolor"}},
 		}
 
-		for _, st := range validSubtests {
-			t.Run(st.name, func(t *testing.T) {
-				actual, err := loadTag[ukspec.FlagNames](st.input)
-				assert.NilError(t, err, "input: %q", st.input)
-				assert.Check(t, cmp.DeepEqual(actual, st.expected), "input: %q", st.input)
-			})
+		runner := func(st subtest) (string, cmp.Comparison) {
+			actual, err := loadTag[ukspec.FlagNames](st.input)
+			return st.name, itest.CmpSequence(cmp.Nil(err), cmp.DeepEqual(actual, st.expected))
 		}
+
+		itest.Run(t, runner, subtests...)
 	})
 
 	t.Run("inline prefix", func(t *testing.T) {
-		invalidSubtests := []subtest[error]{
-			{"hyphen prefix", "-lorem", ukerror.ErrDeveloper},
-			{"whitespace present", "lorem ipsum dolor", ukerror.ErrDeveloper},
+		subtests := []subtest{
+			{"empty", "", ukspec.InlinePrefix("")},
+			{"basic", "lorem", ukspec.InlinePrefix("lorem")},
 		}
 
-		for _, st := range invalidSubtests {
-			t.Run(st.name, func(t *testing.T) {
-				_, actual := loadTag[ukspec.InlinePrefix](st.input)
-				assert.Check(t, cmp.ErrorIs(actual, st.expected), "input: %q", st.input)
-			})
+		runner := func(st subtest) (string, cmp.Comparison) {
+			actual, err := loadTag[ukspec.InlinePrefix](st.input)
+			return st.name, itest.CmpSequence(cmp.Nil(err), cmp.DeepEqual(actual, st.expected))
 		}
 
-		validSubtests := []subtest[ukspec.InlinePrefix]{
-			{"empty", "", ""},
-			{"basic", "lorem", "lorem"},
-		}
-
-		for _, st := range validSubtests {
-			t.Run(st.name, func(t *testing.T) {
-				actual, err := loadTag[ukspec.InlinePrefix](st.input)
-				assert.NilError(t, err, "input: %q", st.input)
-				assert.Check(t, cmp.DeepEqual(actual, st.expected), "input: %q", st.input)
-			})
-		}
+		itest.Run(t, runner, subtests...)
 	})
 }
