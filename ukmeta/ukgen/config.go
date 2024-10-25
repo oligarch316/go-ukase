@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"reflect"
 
-	"github.com/oligarch316/go-ukase/internal/ilog"
-	"github.com/oligarch316/go-ukase/ukcli/ukinfo"
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
+	"github.com/oligarch316/ukase/internal/ilog"
+	"github.com/oligarch316/ukase/ukcli/ukinfo"
+	"github.com/oligarch316/ukase/ukcore/ukspec"
 )
 
 // =============================================================================

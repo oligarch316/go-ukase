@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/oligarch316/go-ukase/internal/itest"
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
+	"github.com/oligarch316/ukase/internal/itest"
+	"github.com/oligarch316/ukase/ukcore/ukspec"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/assert/cmp"
 )

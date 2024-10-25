@@ -3,14 +3,14 @@ package ukopt
 import (
 	"log/slog"
 
-	"github.com/oligarch316/go-ukase"
-	"github.com/oligarch316/go-ukase/ukcli"
-	"github.com/oligarch316/go-ukase/ukcore/ukdec"
-	"github.com/oligarch316/go-ukase/ukcore/ukexec"
-	"github.com/oligarch316/go-ukase/ukcore/ukinit"
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
-	"github.com/oligarch316/go-ukase/ukmeta/ukgen"
-	"github.com/oligarch316/go-ukase/ukmeta/ukhelp"
+	"github.com/oligarch316/ukase"
+	"github.com/oligarch316/ukase/ukcli"
+	"github.com/oligarch316/ukase/ukcore/ukdec"
+	"github.com/oligarch316/ukase/ukcore/ukexec"
+	"github.com/oligarch316/ukase/ukcore/ukinit"
+	"github.com/oligarch316/ukase/ukcore/ukspec"
+	"github.com/oligarch316/ukase/ukmeta/ukgen"
+	"github.com/oligarch316/ukase/ukmeta/ukhelp"
 )
 
 var (

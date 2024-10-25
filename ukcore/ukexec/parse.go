@@ -3,8 +3,8 @@ package ukexec
 import (
 	"fmt"
 
-	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
+	"github.com/oligarch316/ukase/ukcore"
+	"github.com/oligarch316/ukase/ukcore/ukspec"
 )
 
 // =============================================================================

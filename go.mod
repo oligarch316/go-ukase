@@ -1,4 +1,4 @@
-module github.com/oligarch316/go-ukase
+module github.com/oligarch316/ukase
 
 go 1.22rc2
 

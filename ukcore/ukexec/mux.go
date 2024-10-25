@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
+	"github.com/oligarch316/ukase/ukcore"
+	"github.com/oligarch316/ukase/ukcore/ukspec"
 )
 
 type Mux struct {

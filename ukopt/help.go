@@ -1,9 +1,9 @@
 package ukopt
 
 import (
-	"github.com/oligarch316/go-ukase"
-	"github.com/oligarch316/go-ukase/ukmeta"
-	"github.com/oligarch316/go-ukase/ukmeta/ukhelp"
+	"github.com/oligarch316/ukase"
+	"github.com/oligarch316/ukase/ukmeta"
+	"github.com/oligarch316/ukase/ukmeta/ukhelp"
 )
 
 // =============================================================================

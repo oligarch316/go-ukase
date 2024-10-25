@@ -1,13 +1,14 @@
 package ukgen
 
 import (
-	"bytes"
 	_ "embed"
+
+	"bytes"
 	"go/format"
 	"io"
 	"text/template"
 
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
+	"github.com/oligarch316/ukase/ukcore/ukspec"
 )
 
 //go:embed generate.tmpl

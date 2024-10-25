@@ -3,8 +3,8 @@ package ukspec
 import (
 	"log/slog"
 
-	"github.com/oligarch316/go-ukase/internal/ilog"
-	"github.com/oligarch316/go-ukase/internal/ispec"
+	"github.com/oligarch316/ukase/internal/ilog"
+	"github.com/oligarch316/ukase/internal/ispec"
 )
 
 // =============================================================================

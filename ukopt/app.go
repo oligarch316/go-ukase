@@ -1,6 +1,6 @@
 package ukopt
 
-import "github.com/oligarch316/go-ukase"
+import "github.com/oligarch316/ukase"
 
 // =============================================================================
 // General

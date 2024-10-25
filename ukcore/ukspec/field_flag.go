@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/oligarch316/go-ukase/internal/ierror"
+	"github.com/oligarch316/ukase/internal/ierror"
 )
 
 // =============================================================================

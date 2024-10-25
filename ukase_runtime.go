@@ -3,8 +3,8 @@
 package ukase
 
 import (
-	"github.com/oligarch316/go-ukase/ukcli"
-	"github.com/oligarch316/go-ukase/ukmeta/ukhelp"
+	"github.com/oligarch316/ukase/ukcli"
+	"github.com/oligarch316/ukase/ukmeta/ukhelp"
 )
 
 type appConfig struct{ Config }

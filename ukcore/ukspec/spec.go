@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/oligarch316/go-ukase/internal/ierror"
-	"github.com/oligarch316/go-ukase/internal/ispec"
+	"github.com/oligarch316/ukase/internal/ierror"
+	"github.com/oligarch316/ukase/internal/ispec"
 )
 
 // =============================================================================

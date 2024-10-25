@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	gocmp "github.com/google/go-cmp/cmp"
-	"github.com/oligarch316/go-ukase/internal/itest"
-	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukcore/ukdec"
+	"github.com/oligarch316/ukase/internal/itest"
+	"github.com/oligarch316/ukase/ukcore"
+	"github.com/oligarch316/ukase/ukcore/ukdec"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/assert/cmp"
 )

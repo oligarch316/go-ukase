@@ -1,13 +1,14 @@
 package ukhelp
 
 import (
-	"context"
 	_ "embed"
+
+	"context"
 	"os"
 
-	"github.com/oligarch316/go-ukase/ukcli"
-	"github.com/oligarch316/go-ukase/ukcli/ukinfo"
-	"github.com/oligarch316/go-ukase/ukmeta"
+	"github.com/oligarch316/ukase/ukcli"
+	"github.com/oligarch316/ukase/ukcli/ukinfo"
+	"github.com/oligarch316/ukase/ukmeta"
 )
 
 // =============================================================================

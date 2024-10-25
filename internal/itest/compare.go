@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oligarch316/go-ukase/internal/ierror"
+	"github.com/oligarch316/ukase/internal/ierror"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/assert/cmp"
 )

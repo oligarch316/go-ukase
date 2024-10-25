@@ -3,11 +3,11 @@ package ukcli
 import (
 	"log/slog"
 
-	"github.com/oligarch316/go-ukase/internal/ilog"
-	"github.com/oligarch316/go-ukase/ukcore/ukdec"
-	"github.com/oligarch316/go-ukase/ukcore/ukexec"
-	"github.com/oligarch316/go-ukase/ukcore/ukinit"
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
+	"github.com/oligarch316/ukase/internal/ilog"
+	"github.com/oligarch316/ukase/ukcore/ukdec"
+	"github.com/oligarch316/ukase/ukcore/ukexec"
+	"github.com/oligarch316/ukase/ukcore/ukinit"
+	"github.com/oligarch316/ukase/ukcore/ukspec"
 )
 
 // =============================================================================

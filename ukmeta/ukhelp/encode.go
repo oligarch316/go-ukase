@@ -4,8 +4,8 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
-	"github.com/oligarch316/go-ukase/ukmeta"
+	"github.com/oligarch316/ukase/ukcore/ukspec"
+	"github.com/oligarch316/ukase/ukmeta"
 )
 
 type Encoder[T any] func(info any) (description T, err error)

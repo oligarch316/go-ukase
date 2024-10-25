@@ -4,8 +4,8 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukcore/ukinit"
+	"github.com/oligarch316/ukase/ukcore"
+	"github.com/oligarch316/ukase/ukcore/ukinit"
 )
 
 var directiveNoop directiveFunc = func(State) error { return nil }

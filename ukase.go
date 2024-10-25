@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/oligarch316/go-ukase/internal/ilog"
-	"github.com/oligarch316/go-ukase/ukcli"
-	"github.com/oligarch316/go-ukase/ukmeta/ukgen"
-	"github.com/oligarch316/go-ukase/ukmeta/ukhelp"
+	"github.com/oligarch316/ukase/internal/ilog"
+	"github.com/oligarch316/ukase/ukcli"
+	"github.com/oligarch316/ukase/ukmeta/ukgen"
+	"github.com/oligarch316/ukase/ukmeta/ukhelp"
 )
 
 // =============================================================================

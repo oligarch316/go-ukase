@@ -1,6 +1,6 @@
 package ukexec
 
-import "github.com/oligarch316/go-ukase/ukcore/ukspec"
+import "github.com/oligarch316/ukase/ukcore/ukspec"
 
 var paramsSpecEmpty, _ = ukspec.ParametersFor[struct{}]()
 

@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/oligarch316/go-ukase/ukmeta"
-	"github.com/oligarch316/go-ukase/ukmeta/ukhelp"
+	"github.com/oligarch316/ukase/ukmeta"
+	"github.com/oligarch316/ukase/ukmeta/ukhelp"
 )
 
 // =============================================================================

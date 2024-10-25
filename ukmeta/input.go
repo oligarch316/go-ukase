@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/oligarch316/go-ukase/ukcli"
-	"github.com/oligarch316/go-ukase/ukcore/ukexec"
+	"github.com/oligarch316/ukase/ukcli"
+	"github.com/oligarch316/ukase/ukcore/ukexec"
 )
 
 var _ Input = input{}

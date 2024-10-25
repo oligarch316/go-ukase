@@ -3,9 +3,9 @@ package ukgen
 import (
 	"reflect"
 
-	"github.com/oligarch316/go-ukase/internal/ispec"
-	"github.com/oligarch316/go-ukase/ukcli/ukinfo"
-	"github.com/oligarch316/go-ukase/ukmeta"
+	"github.com/oligarch316/ukase/internal/ispec"
+	"github.com/oligarch316/ukase/ukcli/ukinfo"
+	"github.com/oligarch316/ukase/ukmeta"
 )
 
 const tagKeyIndex = "ukidx"

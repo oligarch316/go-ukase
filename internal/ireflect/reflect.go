@@ -3,7 +3,7 @@ package ireflect
 import (
 	"reflect"
 
-	"github.com/oligarch316/go-ukase/internal/ierror"
+	"github.com/oligarch316/ukase/internal/ierror"
 )
 
 type ParametersValue struct{ reflect.Value }

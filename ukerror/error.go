@@ -1,6 +1,6 @@
 package ukerror
 
-import "github.com/oligarch316/go-ukase/internal/ierror"
+import "github.com/oligarch316/ukase/internal/ierror"
 
 // TODO: Document
 var ErrAny = ierror.ErrAny

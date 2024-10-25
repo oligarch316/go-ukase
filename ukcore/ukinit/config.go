@@ -1,6 +1,6 @@
 package ukinit
 
-import "github.com/oligarch316/go-ukase/ukcore/ukspec"
+import "github.com/oligarch316/ukase/ukcore/ukspec"
 
 var defaultConfig = Config{
 	// TODO

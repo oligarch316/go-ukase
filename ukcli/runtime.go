@@ -4,11 +4,11 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/oligarch316/go-ukase/ukcore"
-	"github.com/oligarch316/go-ukase/ukcore/ukdec"
-	"github.com/oligarch316/go-ukase/ukcore/ukexec"
-	"github.com/oligarch316/go-ukase/ukcore/ukinit"
-	"github.com/oligarch316/go-ukase/ukcore/ukspec"
+	"github.com/oligarch316/ukase/ukcore"
+	"github.com/oligarch316/ukase/ukcore/ukdec"
+	"github.com/oligarch316/ukase/ukcore/ukexec"
+	"github.com/oligarch316/ukase/ukcore/ukinit"
+	"github.com/oligarch316/ukase/ukcore/ukspec"
 )
 
 // =============================================================================

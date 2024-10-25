@@ -3,7 +3,7 @@ package ukinfo
 import (
 	"fmt"
 
-	"github.com/oligarch316/go-ukase/ukcli"
+	"github.com/oligarch316/ukase/ukcli"
 )
 
 type Any any

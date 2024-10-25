@@ -1,8 +1,8 @@
 package ukopt
 
 import (
-	"github.com/oligarch316/go-ukase"
-	"github.com/oligarch316/go-ukase/ukcli"
+	"github.com/oligarch316/ukase"
+	"github.com/oligarch316/ukase/ukcli"
 )
 
 // =============================================================================
